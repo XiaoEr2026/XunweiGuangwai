@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>上传菜单照片 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/">← 返回菜单</a>
+
+    <h1 class="detail-title">上传菜单照片</h1>
+
+    <p class="detail-meta">
+      把校方发来的菜单照片传上来，存档备用。后续会接 OCR 自动提取菜名和价格。
+    </p>
+
+    {% if success %}
+      <div class="form-card" style="border-left: 4px solid #37b24d;">
+        <p style="margin: 0; color: #2b8a3e;">✓ 上传成功！</p>
+        <p style="margin: 8px 0 0; color: #666; font-size: 14px;">
+          <a href="/menu_photos" style="color: #1971c2;">查看所有照片</a> 或
+          <a href="/menu_upload" style="color: #1971c2;">再传一张</a>
+        </p>
+      </div>
+    {% else %}
+
+      {% if error %}
+        <div class="form-card" style="border-left: 4px solid #d9480f;">
+          <p style="margin: 0; color: #d9480f;">{{ error }}</p>
+        </div>
+      {% endif %}
+
+      <div class="form-card">
+        <form method="post" enctype="multipart/form-data">
+          <p>
+            <label>菜单照片</label>
+            <input type="file" name="photo" accept="image/*" required>
+          </p>
+          <p>
+            <label>餐次</label>
+            <select name="meal">
+              {% for m in meals %}
+                <option value="{{ m }}">{{ meal_label[m] }}</option>
+              {% endfor %}
+            </select>
+          </p>
+          <p>
+            <label>备注（可选）</label>
+            <input type="text" name="note" maxlength="60"
+                   placeholder="例：9月11日午餐、一饭、东侧大屏">
+          </p>
+          <p>
+            <button type="submit" class="btn">上传</button>
+          </p>
+        </form>
+      </div>
+
+    {% endif %}
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

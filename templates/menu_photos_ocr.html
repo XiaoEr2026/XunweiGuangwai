@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OCR 识别结果 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .ocr-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      background: var(--bg-card);
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      margin-bottom: 8px;
+    }
+    .ocr-row input {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-family: inherit;
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+    }
+    .ocr-row input:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 4px rgba(255,122,69,.12);
+      background: var(--bg-card);
+    }
+    .ocr-row-name  { flex: 3; }
+    .ocr-row-price { flex: 1; min-width: 80px; }
+    .ocr-row-del {
+      flex: 0 0 auto;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+    }
+    .ocr-row-del:hover {
+      background: #ffe3e3;
+      color: var(--color-danger);
+    }
+    .ocr-source-img {
+      max-width: 100%;
+      max-height: 400px;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+    }
+    .ocr-hint {
+      font-size: 13px;
+      color: var(--text-secondary);
+      background: var(--bg-subtle);
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      margin: 16px 0;
+      line-height: 1.7;
+    }
+    .ocr-count {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      margin-left: 8px;
+      font-weight: normal;
+    }
+  </style>
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/menu_photos">← 返回菜单照片</a>
+
+    <h1 class="detail-title">OCR 识别 → 批量入库</h1>
+    <p class="detail-meta">
+      {{ meal_label[photo.meal] }}
+      {% if photo.note %} · {{ photo.note }}{% endif %}
+      · {{ photo.uploaded_at }}
+    </p>
+
+    <details style="margin-top: 16px;">
+      <summary style="cursor: pointer; color: var(--text-secondary); font-size: 14px;">
+        查看原图 ↑
+      </summary>
+      <div style="margin-top: 12px;">
+        <img src="/static/menu_photos/{{ photo.filename }}"
+             alt="菜单照片"
+             class="ocr-source-img">
+      </div>
+    </details>
+
+    {% if not ok %}
+      <div class="form-card" style="border-left: 4px solid var(--color-danger); margin-top: 20px;">
+        <p style="margin: 0; color: var(--color-danger); font-weight: 600;">识别失败</p>
+        <pre style="white-space: pre-wrap; word-break: break-all; margin: 8px 0 0; font-size: 13px;">{{ result }}</pre>
+      </div>
+    {% else %}
+
+      <div class="ocr-hint">
+        📝 识别结果已自动拆成"菜名 + 价格"。<br>
+        · <strong>认错的直接改</strong>（比如"12"识别成"1Z"，改成"12"）<br>
+        · <strong>不想要的点 ✕ 删掉</strong>（比如菜单标题"餐厅"）<br>
+        · <strong>缺的行点"+ 添加一行"</strong><br>
+        · 最后选个窗口，点"确认入库"
+      </div>
+
+      <h2 style="font-size: 16px; margin: 20px 0 12px;">
+        待入库菜品
+        <span class="ocr-count">（共 <span id="row-count">{{ parsed|length }}</span> 行）</span>
+      </h2>
+
+      <form method="post" action="/menu_photos/{{ photo.id }}/ocr/save">
+        <div id="ocr-rows">
+          {% for item in parsed %}
+            <div class="ocr-row">
+              <input type="text" name="name"
+                     class="ocr-row-name"
+                     placeholder="菜名"
+                     value="{{ item.name }}"
+                     maxlength="40">
+              <input type="text" name="price"
+                     class="ocr-row-price"
+                     placeholder="价格"
+                     value="{{ item.price }}"
+                     maxlength="10">
+              <button type="button" class="ocr-row-del"
+                      onclick="delRow(this)"
+                      title="删除这行">✕</button>
+            </div>
+          {% endfor %}
+        </div>
+
+        <p style="margin-top: 12px;">
+          <button type="button" class="btn"
+                  style="background: #868e96; font-size: 13px; padding: 8px 16px;"
+                  onclick="addRow()">+ 添加一行</button>
+        </p>
+
+        <hr>
+
+        <div class="form-card">
+          <p>
+            <label>导入到哪个窗口？</label>
+            <select name="stall_id" required>
+              {% for s in all_stalls %}
+                <option value="{{ s.id }}">
+                  {{ s.canteen_name }} · {{ s.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </p>
+          <p>
+            <button type="submit" class="btn">确认入库</button>
+          </p>
+        </div>
+      </form>
+
+    {% endif %}
+
+  </div>
+
+  <script>
+    function updateCount() {
+      var n = document.querySelectorAll('#ocr-rows .ocr-row').length;
+      var el = document.getElementById('row-count');
+      if (el) el.innerText = n;
+    }
+
+    function addRow() {
+      var wrap = document.getElementById('ocr-rows');
+      var html =
+        '<div class="ocr-row">' +
+        '  <input type="text" name="name" class="ocr-row-name" placeholder="菜名" maxlength="40">' +
+        '  <input type="text" name="price" class="ocr-row-price" placeholder="价格" maxlength="10">' +
+        '  <button type="button" class="ocr-row-del" onclick="delRow(this)" title="删除这行">✕</button>' +
+        '</div>';
+      wrap.insertAdjacentHTML('beforeend', html);
+      updateCount();
+    }
+
+    function delRow(btn) {
+      btn.parentElement.remove();
+      updateCount();
+    }
+  </script>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

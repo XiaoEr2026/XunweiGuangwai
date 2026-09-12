@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>拼饭管理 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/admin">← 返回后台首页</a>
+
+    <h1 class="detail-title">拼饭广场管理</h1>
+    <p class="detail-meta">共 {{ posts|length }} 条帖子（最多显示 200 条）</p>
+
+    {% if posts %}
+      {% for p in posts %}
+        <div class="board-card" style="margin-top: 12px;">
+          <div class="board-head">
+            <span class="board-author">{{ p.author }}</span>
+            {% if p.when_time %}
+              <span class="board-when">🕐 {{ p.when_time }}</span>
+            {% endif %}
+            {% if p.stall_name %}
+              <span class="board-stall">🍽️ {{ p.canteen_name }} · {{ p.stall_name }}</span>
+            {% endif %}
+          </div>
+
+          <p class="board-content">{{ p.content }}</p>
+
+          {% if p.contact %}
+            <p style="font-size: 13px; color: var(--text-secondary); margin: 4px 0;">
+              📱 联系方式：{{ p.contact }}
+            </p>
+          {% endif %}
+
+          <div class="board-foot" style="align-items: center;">
+            <span class="board-time">
+              {{ p.created_at }} · 💬 {{ p.reply_count }} 条回复
+            </span>
+
+            <div style="display: flex; gap: 8px;">
+              <a href="/board/{{ p.id }}" class="btn-sm btn-sm-info">查看</a>
+              <form method="post" action="/board/{{ p.id }}/delete"
+                    data-confirm='删除帖子「{{ p.content|truncate(30) }}」？&#10;所有回复也会一起删除。'
+                    style="display: inline;">
+                <button type="submit" class="btn-sm btn-sm-danger">删除</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-emoji">🍜</span>
+        <p>还没有帖子。</p>
+      </div>
+    {% endif %}
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

@@ -1,0 +1,143 @@
+{# ============================================================
+   _nav.html —— 全站通用顶部导航（含主题切换 + 收藏功能）
+   ============================================================ #}
+
+{# 主题初始化：必须尽早执行，避免页面闪一下再变暗 #}
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('theme');
+      if (saved === 'dark' || saved === 'light') {
+        document.documentElement.setAttribute('data-theme', saved);
+      } else {
+        // 没存过：跟随系统
+        var prefers = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme', prefers ? 'dark' : 'light');
+      }
+    } catch (e) {}
+  })();
+</script>
+
+<nav class="topnav" id="topnav">
+  <div class="nav-inner">
+
+    <a href="/" class="nav-logo">
+      <span class="nav-logo-icon">🍜</span>
+      <span class="nav-logo-text">寻味广外</span>
+    </a>
+
+    <div class="nav-links">
+      {% if is_admin_page %}
+        {# ========== 管理端导航 ========== #}
+        <a href="/admin" class="nav-link">后台首页</a>
+        <a href="/admin/dishes" class="nav-link">菜品管理</a>
+        <a href="/admin/dishes/bulk" class="nav-link">批量导入</a>
+        <a href="/admin/announcements" class="nav-link">
+          公告
+          {% if unread_announcements > 0 %}
+            <span class="nav-badge">{{ unread_announcements }}</span>
+          {% endif %}
+        </a>
+        <a href="/feedback/list" class="nav-link">
+          反馈
+          {% if pending_feedback > 0 %}
+            <span class="nav-badge">{{ pending_feedback }}</span>
+          {% endif %}
+        </a>
+        <a href="/admin/stats" class="nav-link">统计</a>
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-label="切换主题">
+          <span class="theme-icon">🌙</span>
+        </button>
+        <a href="/logout" class="nav-link nav-link-quiet">退出</a>
+      {% else %}
+        {# ========== 学生端导航 ========== #}
+        <a href="/" class="nav-link">菜单</a>
+        <a href="/board" class="nav-link">拼饭</a>
+        <a href="/hot" class="nav-link">热门</a>
+        <a href="/my-favorites" class="nav-link">收藏</a>
+        <a href="/feedback" class="nav-link">反馈</a>
+        <a href="/about" class="nav-link">关于</a>
+        <a href="/announcements" class="nav-bell" aria-label="公告">
+          🔔
+          {% if unread_announcements > 0 %}
+            <span class="nav-bell-badge">{{ unread_announcements }}</span>
+          {% endif %}
+        </a>
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-label="切换主题">
+          <span class="theme-icon">🌙</span>
+        </button>
+      {% endif %}
+    </div>
+
+  </div>
+</nav>
+
+<script>
+  // 滚动时给导航加 class="scrolled"
+  (function () {
+    var nav = document.getElementById('topnav');
+    if (!nav) return;
+    function update() {
+      if (window.scrollY > 4) nav.classList.add('scrolled');
+      else nav.classList.remove('scrolled');
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+  })();
+
+  // 主题切换
+  (function () {
+    var btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+
+    function syncIcon() {
+      var theme = document.documentElement.getAttribute('data-theme');
+      var icon = btn.querySelector('.theme-icon');
+      if (icon) icon.innerText = theme === 'dark' ? '☀️' : '🌙';
+    }
+
+    btn.addEventListener('click', function () {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try {
+        localStorage.setItem('theme', next);
+      } catch (e) {}
+      syncIcon();
+    });
+
+    syncIcon();
+  })();
+
+  // 收藏切换
+  function toggleFav(event, btn) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    var dishId = btn.getAttribute('data-dish-id');
+    if (!dishId) return;
+
+    var wasActive = btn.classList.contains('active');
+    var icon = btn.querySelector('.fav-icon');
+
+    // 乐观更新：先动 UI
+    btn.classList.toggle('active');
+    if (icon) icon.innerText = wasActive ? '🤍' : '❤️';
+
+    fetch('/favorite/' + dishId + '/toggle', { method: 'POST' })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (!data.ok) {
+          btn.classList.toggle('active');
+          if (icon) icon.innerText = wasActive ? '❤️' : '🤍';
+          alert(data.msg || '操作失败');
+        }
+      })
+      .catch(function () {
+        btn.classList.toggle('active');
+        if (icon) icon.innerText = wasActive ? '❤️' : '🤍';
+        alert('网络异常，请稍后再试');
+      });
+  }
+</script>

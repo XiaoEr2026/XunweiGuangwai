@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理后台 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .admin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+    .admin-card {
+      display: block;
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px 22px;
+      text-decoration: none;
+      color: inherit;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      transition: transform 0.15s, box-shadow 0.15s;
+      border-left: 4px solid #7048e8;
+    }
+    .admin-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+    }
+    .admin-card h3 {
+      margin: 0 0 6px;
+      font-size: 18px;
+      color: #222;
+    }
+    .admin-card p {
+      margin: 0;
+      font-size: 14px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <div class="header-row">
+      <div>
+        <h1 class="site-title">管理后台</h1>
+        <p class="site-subtitle">校方 / 管理员专用</p>
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 24px;">
+        <a href="/" class="btn" style="background: #1971c2;">查看前台</a>
+        <a href="/logout" class="btn" style="background: #888;">退出登录</a>
+      </div>
+    </div>
+
+    <div class="admin-grid">
+
+      <a class="admin-card" href="/admin/canteens" style="border-left-color: #FF7A45;">
+        <h3>🏫 管理饭堂楼层</h3>
+        <p>添加 / 删除饭堂楼层，如"一期一楼"。</p>
+      </a>
+
+      <a class="admin-card" href="/admin/stalls" style="border-left-color: #FF7A45;">
+        <h3>🍽️ 管理窗口</h3>
+        <p>给楼层添加窗口，如"川湘风味"。</p>
+      </a>
+
+      <a class="admin-card" href="/admin/dishes">
+        <h3>📋 菜品管理</h3>
+        <p>查看所有菜品，编辑、删除。</p>
+      </a>
+
+      <a class="admin-card" href="/admin/dishes/bulk">
+        <h3>📥 批量导入</h3>
+        <p>贴一段文字，一次录入多道菜。</p>
+      </a>
+
+      <a class="admin-card" href="/dish/new">
+        <h3>➕ 添加菜品</h3>
+        <p>手动录入新菜品。</p>
+      </a>
+
+      <a class="admin-card" href="/menu_upload">
+        <h3>📷 上传菜单照片</h3>
+        <p>存档校方发来的菜单照片。</p>
+      </a>
+
+      <a class="admin-card" href="/menu_photos">
+        <h3>🖼 菜单照片管理</h3>
+        <p>查看、删除已上传的菜单照片。</p>
+      </a>
+
+      <a class="admin-card" href="/feedback/list" style="position: relative;">
+        {% if pending_feedback > 0 %}
+          <span class="admin-card-badge">{{ pending_feedback }}</span>
+        {% endif %}
+        <h3>📨 查看反馈</h3>
+        <p>学生提交的意见、建议、bug 报告。</p>
+      </a>
+
+            <a class="admin-card" href="/admin/blacklist" style="border-left-color: #495057;">
+        <h3>🚫 IP 黑名单</h3>
+        <p>禁止刷屏 IP 提交反馈。</p>
+      </a>
+
+      <a class="admin-card" href="/admin/reviews" style="border-left-color: #7048e8;">
+        <h3>💬 评论管理</h3>
+        <p>查看所有评论，删除不合适的。</p>
+      </a>
+
+      <a class="admin-card" href="/admin/announcements" style="border-left-color: #f59f00;">
+        <h3>📢 公告管理</h3>
+        <p>发布停餐、新菜、窗口调整等通知。</p>
+      </a>
+
+      <a class="admin-card" href="/admin/board" style="border-left-color: #2b8a3e;">
+        <h3>🍜 拼饭广场管理</h3>
+        <p>查看所有拼饭帖子，删除不合适的。</p>
+      </a>
+
+      <a class="admin-card" href="/admin/stats" style="border-left-color: #f59f00;">
+        <h3>📊 数据统计</h3>
+        <p>好评榜、差评榜、热门榜、总览数字。</p>
+      </a>
+
+    </div>
+
+  </div>
+
+  {% include '_footer.html' %}
+
+</body>
+</html>

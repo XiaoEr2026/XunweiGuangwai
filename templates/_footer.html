@@ -1,0 +1,115 @@
+{# ============================================================
+   _footer.html —— 全站通用页脚 + 全局确认弹窗
+   ============================================================ #}
+
+{# ==================== Flash 消息 ==================== #}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrap">
+      {% for category, msg in messages %}
+        <div class="flash flash-{{ category }}">{{ msg }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <p class="footer-main">
+      © 2026 <strong>07 部</strong> · 寻味广外校园平台
+    </p>
+    <p class="footer-sub">
+      由学生团队自主开发 ·
+      <a href="/about">关于我们</a> ·
+      <a href="/feedback">意见反馈</a>
+    </p>
+  </div>
+</footer>
+
+{# ==================== 全局确认弹窗 ==================== #}
+<div class="app-confirm" id="app-confirm">
+  <div class="app-confirm-mask"></div>
+  <div class="app-confirm-card">
+    <div class="app-confirm-msg" id="app-confirm-msg"></div>
+    <div class="app-confirm-actions">
+      <button type="button" class="app-confirm-cancel" id="app-confirm-cancel">取消</button>
+      <button type="button" class="app-confirm-ok" id="app-confirm-ok">确定</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ============================================================
+  // 全局自定义确认框
+  // ============================================================
+  (function () {
+    var modal    = document.getElementById('app-confirm');
+    var msgEl    = document.getElementById('app-confirm-msg');
+    var okBtn    = document.getElementById('app-confirm-ok');
+    var cancelBtn= document.getElementById('app-confirm-cancel');
+    if (!modal) return;
+
+    var pendingCallback = null;
+
+    function openConfirm(message, onConfirm) {
+      msgEl.innerText = message || '确定吗？';
+      modal.classList.add('show');
+      document.body.style.overflow = 'hidden';
+      pendingCallback = onConfirm || null;
+      // 自动聚焦到"确定"按钮
+      setTimeout(function () { okBtn.focus(); }, 50);
+    }
+
+    function closeConfirm() {
+      modal.classList.remove('show');
+      document.body.style.overflow = '';
+      pendingCallback = null;
+    }
+
+    okBtn.addEventListener('click', function () {
+      var cb = pendingCallback;
+      closeConfirm();
+      if (typeof cb === 'function') cb();
+    });
+
+    cancelBtn.addEventListener('click', closeConfirm);
+
+    modal.querySelector('.app-confirm-mask').addEventListener('click', closeConfirm);
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && modal.classList.contains('show')) {
+        closeConfirm();
+      }
+    });
+
+    // 暴露给全局
+    window.appConfirm = openConfirm;
+
+    // ============================================================
+    // 自动拦截：任何带 data-confirm 属性的 form，提交前弹自定义确认框
+    // ============================================================
+    document.addEventListener('submit', function (e) {
+      var form = e.target;
+      if (!form || form.tagName !== 'FORM') return;
+
+      var msg = form.getAttribute('data-confirm');
+      if (!msg) return;
+      if (form.dataset.__confirmed === '1') {
+        // 已经确认过，放行
+        delete form.dataset.__confirmed;
+        return;
+      }
+
+      e.preventDefault();
+      openConfirm(msg, function () {
+        form.dataset.__confirmed = '1';
+        // 用 requestSubmit 触发一次正常提交（会再次经过本监听器，但已放行）
+        if (typeof form.requestSubmit === 'function') {
+          form.requestSubmit();
+        } else {
+          form.submit();
+        }
+      });
+    });
+  })();
+</script>

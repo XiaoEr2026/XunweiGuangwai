@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    {# ==================== Hero + 搜索 ==================== #}
+    <section class="hero">
+      <h1 class="hero-title">
+        {% if q %}
+          搜「{{ q }}」
+        {% else %}
+          今天想吃<span class="hero-highlight">点什么</span>？
+        {% endif %}
+      </h1>
+      <p class="hero-sub">校园食堂 · 每日现做 · 干净卫生</p>
+
+      <form class="hero-search" method="get" action="/">
+        {% if current_meal != 'all' %}
+          <input type="hidden" name="meal" value="{{ current_meal }}">
+        {% endif %}
+        {% if current_canteen %}
+          <input type="hidden" name="canteen" value="{{ current_canteen }}">
+        {% endif %}
+        <span class="hero-search-icon">🔍</span>
+        <input type="text" name="q" class="hero-search-input"
+               placeholder="搜索菜名、窗口、口味…"
+               value="{{ q }}" autocomplete="off">
+        {% if q %}
+          <a href="/" class="hero-search-clear" title="清空">✕</a>
+        {% endif %}
+        <button type="submit" class="hero-search-btn">搜索</button>
+      </form>
+    </section>
+
+    {# ==================== 重要公告横幅 ==================== #}
+    {% set important = announcements | selectattr("level", "equalto", "danger") | list %}
+    {% if important %}
+      {% for a in important %}
+        <a href="/announcements/{{ a.id }}"
+           style="display: block; text-decoration: none; color: inherit;">
+          <div class="announce-card announce-danger" style="margin: 4px 0 20px;">
+            <div class="announce-head">
+              <span class="announce-tag tag-danger">重要</span>
+              <h3 class="announce-title">{{ a.title }}</h3>
+            </div>
+            {% if a.content %}
+              <p class="announce-content" style="margin-top: 6px;">
+                {{ a.content[:60] }}{% if a.content|length > 60 %}…{% endif %}
+              </p>
+            {% endif %}
+          </div>
+        </a>
+      {% endfor %}
+    {% endif %}
+
+    {# ==================== 随机选菜按钮 ==================== #}
+    {% if dishes %}
+      <div class="random-pick-wrap">
+        <button type="button" class="btn-random" id="random-pick-btn">
+          🎲 今天帮我选一道
+        </button>
+      </div>
+    {% endif %}
+
+    {# ==================== 楼层快捷卡片 ==================== #}
+    <h2 class="section-title">🏫 按楼层找</h2>
+
+    <div class="canteen-scroll">
+      <a href="/"
+         class="canteen-chip {% if not current_canteen %}active{% endif %}">
+        <span class="canteen-chip-emoji">🎯</span>
+        <span class="canteen-chip-name">全部楼层</span>
+      </a>
+      {% for c in canteens %}
+        <a href="/?canteen={{ c.id }}{% if current_meal != 'all' %}&meal={{ current_meal }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+           class="canteen-chip {% if current_canteen == c.id|string %}active{% endif %}">
+          <span class="canteen-chip-emoji">🏫</span>
+          <span class="canteen-chip-name">{{ c.name }}</span>
+          <span class="canteen-chip-count">{{ c.dish_count }}</span>
+        </a>
+      {% endfor %}
+    </div>
+
+    {# ==================== 餐次筛选 ==================== #}
+    <div class="meal-tabs" style="margin-top: 20px;">
+      <a href="/{% if current_canteen %}?canteen={{ current_canteen }}{% endif %}{% if q %}{% if current_canteen %}&{% else %}?{% endif %}q={{ q }}{% endif %}"
+         class="meal-tab {% if current_meal == 'all' %}active{% endif %}">全部</a>
+      {% for m in meals %}
+        <a href="/?meal={{ m }}{% if current_canteen %}&canteen={{ current_canteen }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+           class="meal-tab {% if current_meal == m %}active{% endif %}">
+          {{ meal_label[m] }}
+        </a>
+      {% endfor %}
+    </div>
+
+    {# ==================== 全部菜品 ==================== #}
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin: 28px 0 12px;">
+      <h2 class="section-title" style="margin: 0;">
+        🍽️ {% if current_canteen %}本楼层菜品{% else %}全部菜品{% endif %}
+      </h2>
+      <span style="color: var(--text-secondary); font-size: 13.5px;">
+        共 {{ dishes|length }} 道
+      </span>
+    </div>
+
+    {% if dishes %}
+      <div class="dish-list">
+        {% for dish in dishes %}
+          {% include '_dish_card.html' %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-emoji">🍽️</span>
+        {% if q %}
+          <p>没找到「{{ q }}」相关的菜，换个词试试？</p>
+          <p style="margin-top: 16px;">
+            <a href="/" class="btn">清空筛选</a>
+          </p>
+        {% else %}
+          <p>这里还没有菜品，换个筛选条件试试？</p>
+        {% endif %}
+      </div>
+    {% endif %}
+
+  </div>
+
+  {# ==================== 随机选菜弹窗 ==================== #}
+  <div class="random-modal" id="random-modal">
+    <div class="random-modal-mask" id="random-modal-mask"></div>
+    <div class="random-modal-card">
+      <h3 class="random-modal-title">🎲 今天就吃这个</h3>
+      <div class="random-modal-body" id="random-modal-body"></div>
+      <div class="random-modal-actions">
+        <button type="button" class="btn-random-again" id="random-again-btn">再抽一次</button>
+        <a href="#" class="btn-random-go" id="random-go-btn">去看看</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var btn      = document.getElementById('random-pick-btn');
+      var modal    = document.getElementById('random-modal');
+      var mask     = document.getElementById('random-modal-mask');
+      var body     = document.getElementById('random-modal-body');
+      var againBtn = document.getElementById('random-again-btn');
+      var goBtn    = document.getElementById('random-go-btn');
+      if (!btn || !modal) return;
+
+      var isSpinning = false;
+
+      function renderCard(cardLink) {
+        var card = cardLink.querySelector('.dish-card');
+        body.innerHTML = '';
+        if (card) body.appendChild(card.cloneNode(true));
+        goBtn.setAttribute('href', cardLink.getAttribute('href'));
+      }
+
+      function spin() {
+        if (isSpinning) return;
+        var cards = document.querySelectorAll('.dish-list .card-link');
+        if (cards.length === 0) {
+          alert('当前筛选下没有菜品，换个条件试试');
+          return;
+        }
+
+        isSpinning = true;
+        againBtn.disabled = true;
+        goBtn.classList.add('disabled');
+
+        var winner = cards[Math.floor(Math.random() * cards.length)];
+
+        var totalSteps = Math.min(16, Math.max(8, cards.length * 2));
+        var step = 0;
+
+        function nextFrame() {
+          var rand = cards[Math.floor(Math.random() * cards.length)];
+          renderCard(rand);
+
+          step++;
+
+          if (step >= totalSteps) {
+            renderCard(winner);
+
+            body.classList.remove('pop');
+            void body.offsetWidth;
+            body.classList.add('pop');
+
+            isSpinning = false;
+            againBtn.disabled = false;
+            goBtn.classList.remove('disabled');
+            return;
+          }
+
+          var delay = 60 + step * 22;
+          setTimeout(nextFrame, delay);
+        }
+
+        nextFrame();
+      }
+
+      function openModal() {
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+        spin();
+      }
+
+      function closeModal() {
+        if (isSpinning) return;
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+      }
+
+      btn.addEventListener('click', openModal);
+      againBtn.addEventListener('click', spin);
+      mask.addEventListener('click', closeModal);
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && modal.classList.contains('show')) {
+          closeModal();
+        }
+      });
+    })();
+  </script>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

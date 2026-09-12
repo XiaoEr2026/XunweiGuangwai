@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的收藏 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <h1 class="detail-title">❤️ 我的收藏</h1>
+    <p class="detail-meta">
+      {% if dishes %}
+        共 {{ dishes|length }} 道菜 · 收藏保存在这台设备上
+      {% else %}
+        还没有收藏任何菜
+      {% endif %}
+    </p>
+
+    {% if dishes %}
+      <div class="dish-list" style="margin-top: 20px;">
+        {% for dish in dishes %}
+          {% include '_dish_card.html' %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-emoji">🤍</span>
+        <p>还没有收藏任何菜。</p>
+        <p style="margin-top: 16px;">
+          <a href="/" class="btn">去首页逛逛</a>
+        </p>
+      </div>
+    {% endif %}
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

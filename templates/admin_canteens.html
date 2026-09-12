@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理饭堂楼层 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/admin">← 返回后台首页</a>
+
+    <h1 class="detail-title">管理饭堂楼层</h1>
+    <p class="detail-meta">如"一期一楼""一期二楼""二期二楼"。楼层下可以挂多个窗口。</p>
+
+    <div class="form-card">
+      <h2 style="margin: 0 0 12px; font-size: 16px;">添加新楼层</h2>
+      <form method="post" class="form-inline">
+        <div>
+          <label>楼层名称</label>
+          <input type="text" name="name" required maxlength="30"
+                 placeholder="例：一期三楼">
+        </div>
+        <div style="flex: 0 0 auto; min-width: auto;">
+          <button type="submit" class="btn">添加</button>
+        </div>
+      </form>
+    </div>
+
+    {% if canteens %}
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>楼层名称</th>
+            <th>窗口数</th>
+            <th>菜品数</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in canteens %}
+            <tr>
+              <td>{{ c.id }}</td>
+              <td><strong>{{ c.name }}</strong></td>
+              <td>{{ c.stall_count }}</td>
+              <td>{{ c.dish_count }}</td>
+              <td>
+                <form method="post" action="/admin/canteens/{{ c.id }}/delete"
+                      data-confirm='删除「{{ c.name }}」？&#10;该楼层下的所有窗口和菜品会一起删除，此操作不可恢复！'
+                      style="display: inline;">
+                  <button type="submit" class="btn-sm btn-sm-danger">删除</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-emoji">🏫</span>
+        <p>还没有任何楼层，先在上面加一个吧。</p>
+      </div>
+    {% endif %}
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

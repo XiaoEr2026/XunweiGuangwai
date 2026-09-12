@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理窗口 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/admin">← 返回后台首页</a>
+
+    <h1 class="detail-title">管理窗口</h1>
+    <p class="detail-meta">每个窗口属于一个楼层。如"一期二楼 · 风情水煮"。</p>
+
+    <div class="form-card">
+      <h2 style="margin: 0 0 12px; font-size: 16px;">添加新窗口</h2>
+
+      {% if canteens %}
+        <form method="post" class="form-inline">
+          <div>
+            <label>所属楼层</label>
+            <select name="canteen_id" required>
+              {% for c in canteens %}
+                <option value="{{ c.id }}">{{ c.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>窗口名称</label>
+            <input type="text" name="name" required maxlength="40"
+                   placeholder="例：风情水煮">
+          </div>
+          <div style="flex: 0 0 auto; min-width: auto;">
+            <button type="submit" class="btn">添加</button>
+          </div>
+        </form>
+      {% else %}
+        <p style="color: var(--text-secondary);">
+          还没有任何楼层。请先去
+          <a href="/admin/canteens">管理饭堂楼层</a>
+          添加。
+        </p>
+      {% endif %}
+    </div>
+
+    {% if stalls %}
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>楼层</th>
+            <th>窗口名称</th>
+            <th>菜品数</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in stalls %}
+            <tr>
+              <td>{{ s.id }}</td>
+              <td>{{ s.canteen_name }}</td>
+              <td><strong>{{ s.name }}</strong></td>
+              <td>{{ s.dish_count }}</td>
+              <td>
+                <form method="post" action="/admin/stalls/{{ s.id }}/delete"
+                      data-confirm='删除「{{ s.canteen_name }} · {{ s.name }}」？&#10;该窗口下的所有菜品会一起删除，此操作不可恢复！'
+                      style="display: inline;">
+                  <button type="submit" class="btn-sm btn-sm-danger">删除</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-emoji">🍽️</span>
+        <p>还没有任何窗口。</p>
+      </div>
+    {% endif %}
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理员登录 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <div class="container">
+
+    <a class="back-link" href="/">← 返回菜单</a>
+
+    <h1 class="detail-title">管理员登录</h1>
+
+    {% if error %}
+      <p style="color: #d9480f; font-weight: bold;">{{ error }}</p>
+    {% endif %}
+
+    <div class="form-card">
+      <form method="post">
+        <p>
+          <label>管理密码</label>
+          <input type="password" name="password" required autofocus>
+        </p>
+        <p>
+          <button type="submit" class="btn">登录</button>
+        </p>
+      </form>
+    </div>
+
+    <p style="color: #999; font-size: 13px; margin-top: 20px;">
+      普通同学无需登录，可直接浏览和评价。此页面仅供管理菜品使用。
+    </p>
+
+  </div>
+
+  {% include '_footer.html' %}
+
+</body>
+</html>

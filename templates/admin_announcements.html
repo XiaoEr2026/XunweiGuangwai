@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>公告管理 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/admin">← 返回后台首页</a>
+
+    <h1 class="detail-title">公告管理</h1>
+    <p class="detail-meta">发布给全体学生看的通知。新菜上架、窗口调整、停餐通知都可以发这里。</p>
+
+    <div class="form-card" style="margin-top: 20px;">
+      <h2 style="margin: 0 0 14px; font-size: 16px;">发布新公告</h2>
+
+      <form method="post">
+        <p>
+          <label>标题</label>
+          <input type="text" name="title" required maxlength="80"
+                 placeholder="例：一期三楼明天停餐">
+        </p>
+        <p>
+          <label>内容（可选）</label>
+          <textarea name="content" rows="3" maxlength="500"
+                    placeholder="补充说明，比如具体原因、恢复时间等"></textarea>
+        </p>
+        <p>
+          <label>重要程度</label>
+          <select name="level">
+            <option value="info">📢 普通通知</option>
+            <option value="warning">⚠️ 需要注意</option>
+            <option value="danger">🚨 重要（红色显示）</option>
+          </select>
+        </p>
+
+        <p>
+          <label>过期时间（可选）</label>
+          {# datetime-local：浏览器/手机自带日期+时间选择器 #}
+          <input type="datetime-local" name="expires_at" id="expires-at">
+          <small style="display: block; margin-top: 6px; color: var(--text-tertiary); font-size: 12.5px;">
+            留空表示永久有效。到期后学生端首页自动隐藏，但历史记录仍可查。
+          </small>
+          <small style="display: block; margin-top: 6px;">
+            <a href="#" onclick="clearExpires(event);"
+               style="color: var(--color-primary-dark); font-size: 12.5px; text-decoration: none;">
+              ✕ 清除已选时间
+            </a>
+            &nbsp;·&nbsp;
+            <a href="#" onclick="quickExpires(event, 1);"
+               style="color: var(--color-primary-dark); font-size: 12.5px; text-decoration: none;">
+              设为 1 天后
+            </a>
+            &nbsp;·&nbsp;
+            <a href="#" onclick="quickExpires(event, 7);"
+               style="color: var(--color-primary-dark); font-size: 12.5px; text-decoration: none;">
+              设为 7 天后
+            </a>
+          </small>
+        </p>
+
+        <p>
+          <label style="font-weight: normal; display: block; margin-top: 4px;">
+            <input type="checkbox" name="is_pinned" value="1"
+                   style="width: auto; margin-right: 8px;">
+            置顶（显示在最上面）
+          </label>
+        </p>
+        <p>
+          <button type="submit" class="btn">发布</button>
+        </p>
+      </form>
+    </div>
+
+    {% if items %}
+      <h2 style="margin: 32px 0 12px; font-size: 18px;">已发布的公告（{{ items|length }} 条）</h2>
+
+      {% for a in items %}
+        <div class="announce-card announce-{{ a.level }}" style="margin-top: 12px;">
+          <div class="announce-head">
+            {% if a.level == 'danger' %}
+              <span class="announce-tag tag-danger">重要</span>
+            {% elif a.level == 'warning' %}
+              <span class="announce-tag tag-warning">注意</span>
+            {% else %}
+              <span class="announce-tag tag-info">通知</span>
+            {% endif %}
+
+            {% if a.is_pinned %}
+              <span class="announce-tag tag-pinned">📌 置顶</span>
+            {% endif %}
+
+            <h3 class="announce-title">{{ a.title }}</h3>
+          </div>
+
+          {% if a.content %}
+            <p class="announce-content">{{ a.content }}</p>
+          {% endif %}
+
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <p class="announce-time" style="margin: 0;">
+              {{ a.created_at }}
+              {% if a.expires_at %}
+                · 有效至 {{ a.expires_at }}
+              {% endif %}
+            </p>
+
+            <form method="post" action="/admin/announcements/{{ a.id }}/delete"
+                  data-confirm='删除公告「{{ a.title }}」？'
+                  style="display: inline;">
+              <button type="submit" class="btn-sm btn-sm-danger">删除</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state" style="margin-top: 24px;">
+        <span class="empty-emoji">📢</span>
+        <p>还没有发布过公告。</p>
+      </div>
+    {% endif %}
+
+  </div>
+
+  <script>
+    // 清除已选时间
+    function clearExpires(e) {
+      e.preventDefault();
+      document.getElementById('expires-at').value = '';
+    }
+
+    // 快捷设为 N 天后
+    function quickExpires(e, days) {
+      e.preventDefault();
+      var d = new Date();
+      d.setDate(d.getDate() + days);
+      // 格式：YYYY-MM-DDTHH:MM
+      var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+      var val = d.getFullYear() + '-' +
+                pad(d.getMonth() + 1) + '-' +
+                pad(d.getDate()) + 'T' +
+                pad(d.getHours()) + ':' +
+                pad(d.getMinutes());
+      document.getElementById('expires-at').value = val;
+    }
+  </script>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

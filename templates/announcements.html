@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>公告 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/">← 返回首页</a>
+
+    <h1 class="detail-title">📢 全部公告</h1>
+    <p class="detail-meta">共 {{ items|length }} 条</p>
+
+    {% if items %}
+      <div style="margin-top: 20px;">
+        {% for a in items %}
+          <a class="announce-card announce-{{ a.level }} {% if not a.is_read and a.is_active %}is-unread{% endif %}"
+             href="/announcements/{{ a.id }}"
+             style="display: block; text-decoration: none; color: inherit;">
+
+            <div class="announce-head">
+              {# 未读小橙点 #}
+              {% if not a.is_read and a.is_active %}
+                <span class="announce-dot" title="未读"></span>
+              {% endif %}
+
+              {% if a.level == 'danger' %}
+                <span class="announce-tag tag-danger">重要</span>
+              {% elif a.level == 'warning' %}
+                <span class="announce-tag tag-warning">注意</span>
+              {% else %}
+                <span class="announce-tag tag-info">通知</span>
+              {% endif %}
+
+              {% if a.is_pinned %}
+                <span class="announce-tag tag-pinned">📌 置顶</span>
+              {% endif %}
+
+              {% if not a.is_active %}
+                <span class="announce-tag" style="background:#eee; color:#888;">已过期</span>
+              {% endif %}
+
+              <h3 class="announce-title">{{ a.title }}</h3>
+            </div>
+
+            {% if a.content %}
+              <p class="announce-content">
+                {{ a.content[:60] }}{% if a.content|length > 60 %}…{% endif %}
+              </p>
+            {% endif %}
+
+            <p class="announce-time">
+              {{ a.created_at }}
+              {% if a.expires_at %}
+                · 有效至 {{ a.expires_at }}
+              {% endif %}
+            </p>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-emoji">📢</span>
+        <p>还没有公告。</p>
+      </div>
+    {% endif %}
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

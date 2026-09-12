@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>拼饭广场 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <div class="header-row">
+      <div>
+        <h1 class="site-title">🍜 拼饭广场</h1>
+        <p class="site-subtitle">找同学一起吃饭 · 约饭 · 拼单</p>
+      </div>
+      <a href="/board/new" class="btn" style="margin-top: 24px;">+ 我要发帖</a>
+    </div>
+
+    {% if posts %}
+      <div class="board-list">
+        {% for p in posts %}
+          <a class="board-card {% if p.visitor_id == my_visitor_id %}board-card-mine{% endif %}"
+             href="/board/{{ p.id }}">
+            <div class="board-head">
+              <span class="board-author">{{ p.author }}</span>
+              {% if p.visitor_id == my_visitor_id %}
+                <span class="my-tag">我发的</span>
+              {% endif %}
+              {% if p.when_time %}
+                <span class="board-when">🕐 {{ p.when_time }}</span>
+              {% endif %}
+              {% if p.stall_name %}
+                <span class="board-stall">🍽️ {{ p.canteen_name }} · {{ p.stall_name }}</span>
+              {% endif %}
+            </div>
+
+            <p class="board-content">
+              {{ p.content[:120] }}{% if p.content|length > 120 %}…{% endif %}
+            </p>
+
+            <div class="board-foot">
+              <span class="board-time">{{ p.created_at }}</span>
+              <span class="board-reply-count">💬 {{ p.reply_count }} 条回复</span>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-emoji">🍜</span>
+        <p>还没有人发帖。要不要做第一个？</p>
+        <p style="margin-top: 16px;">
+          <a href="/board/new" class="btn">+ 我要发帖</a>
+        </p>
+      </div>
+    {% endif %}
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

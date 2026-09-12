@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>拼饭帖 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/board">← 返回拼饭广场</a>
+
+    {# ==================== 帖子主体 ==================== #}
+    <article class="board-main">
+      <div class="board-main-head">
+        <span class="board-author board-author-big">{{ post.author }}</span>
+        {% if post.visitor_id == my_visitor_id %}
+          <span class="my-tag">我发的</span>
+        {% endif %}
+      </div>
+
+      {% if post.when_time %}
+        <p class="board-meta">🕐 {{ post.when_time }}</p>
+      {% endif %}
+
+      {% if post.stall_name %}
+        <p class="board-meta">
+          🍽️ 关联窗口：
+          <a href="/stall/{{ post.stall_id }}"
+             style="color: var(--color-primary-dark); text-decoration: none;">
+            {{ post.canteen_name }} · {{ post.stall_name }}
+          </a>
+        </p>
+      {% endif %}
+
+      <p class="board-main-content">{{ post.content }}</p>
+
+      {% if post.contact %}
+        <p class="board-meta" style="margin-top: 14px;">
+          📱 联系方式：<strong>{{ post.contact }}</strong>
+        </p>
+      {% endif %}
+
+      <div class="board-main-foot">
+        <span class="board-time">发布于 {{ post.created_at }}</span>
+
+        {% if post.visitor_id == my_visitor_id or is_admin %}
+          <form method="post" action="/board/{{ post.id }}/delete-own"
+                data-confirm='删除这条帖子？&#10;它的所有回复也会一起删除。'
+                style="display: inline;">
+            <button type="submit" class="review-del-btn">
+              {% if post.visitor_id != my_visitor_id %}删除（管理员）{% else %}删除帖子{% endif %}
+            </button>
+          </form>
+        {% endif %}
+      </div>
+    </article>
+
+    {# ==================== 回复区 ==================== #}
+    <h2 style="margin: 32px 0 12px; font-size: 18px;">
+      💬 回复（{{ replies|length }}）
+    </h2>
+
+    {% if replies %}
+      {% for r in replies %}
+        <div class="board-reply">
+          <div class="board-reply-head">
+            <span class="board-author">{{ r.author }}</span>
+            {% if r.visitor_id == my_visitor_id %}
+              <span class="my-tag">我发的</span>
+            {% endif %}
+            <span class="board-time" style="margin-left: auto;">{{ r.created_at }}</span>
+          </div>
+          <p class="board-reply-content">{{ r.content }}</p>
+
+          {% if r.visitor_id == my_visitor_id or is_admin %}
+            <div style="text-align: right; margin-top: 6px;">
+              <form method="post" action="/board/reply/{{ r.id }}/delete-own"
+                    data-confirm='删除这条回复？'
+                    style="display: inline;">
+                <button type="submit" class="review-del-btn">
+                  {% if r.visitor_id != my_visitor_id %}删除（管理员）{% else %}删除{% endif %}
+                </button>
+              </form>
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <p style="color: var(--text-secondary); margin: 12px 0;">还没有人回复，抢个沙发？</p>
+    {% endif %}
+
+    {# ==================== 回复表单 ==================== #}
+    <div class="form-card" style="margin-top: 20px;">
+      <h3 style="margin: 0 0 12px; font-size: 15px;">我也要说一句</h3>
+      <form method="post">
+        <p>
+          <label>你的昵称</label>
+          <input type="text" name="author" required maxlength="20">
+        </p>
+        <p>
+          <label>回复内容</label>
+          <textarea name="content" rows="3" required maxlength="300"></textarea>
+        </p>
+        <p>
+          <button type="submit" class="btn">回复</button>
+        </p>
+      </form>
+    </div>
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

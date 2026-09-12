@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>反馈列表 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/admin">← 返回后台首页</a>
+
+    <div class="header-row">
+      <div>
+        <h1 class="site-title">反馈列表</h1>
+        <p class="site-subtitle">共 {{ items|length }} 条</p>
+      </div>
+      <div style="margin-top: 24px;">
+        <a href="/admin/blacklist" class="btn" style="background: #868e96;">IP 黑名单</a>
+      </div>
+    </div>
+
+    {% if items %}
+      {% for item in items %}
+        <div class="review" {% if item.status == 'done' %}style="opacity: 0.55;"{% endif %}>
+          <p>
+            {% if item.mood %}
+              <span class="feedback-mood">{{ mood_labels[item.mood] }}</span>
+            {% endif %}
+
+            <strong>{{ categories[item.category] or item.category }}</strong>
+
+            {% if item.status == 'new' %}
+              <span style="background: var(--color-primary); color: #fff; padding: 2px 8px;
+                           border-radius: 999px; font-size: 12px; margin-left: 6px;">新</span>
+            {% else %}
+              <span style="background: #ccc; color: #fff; padding: 2px 8px;
+                           border-radius: 999px; font-size: 12px; margin-left: 6px;">已处理</span>
+            {% endif %}
+          </p>
+
+          <p style="white-space: pre-wrap;">{{ item.content }}</p>
+
+          {% if item.contact %}
+            <p style="color: var(--text-secondary); font-size: 14px;">联系方式：{{ item.contact }}</p>
+          {% endif %}
+
+          <p class="review-time">
+            {{ item.created_at }}
+            {% if item.ip %}
+              · <span style="font-family: monospace;">{{ item.ip }}</span>
+            {% endif %}
+          </p>
+
+          <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
+            {% if item.status == 'new' %}
+              <form method="post" action="/feedback/{{ item.id }}/done" style="display: inline;">
+                <button type="submit" class="btn-sm btn-sm-info" style="padding: 6px 14px; font-size: 13px;">
+                  标记已处理
+                </button>
+              </form>
+            {% endif %}
+
+            <form method="post" action="/feedback/{{ item.id }}/delete"
+                  data-confirm='删除这条反馈？此操作不可恢复。'
+                  style="display: inline;">
+              <button type="submit" class="btn-sm btn-sm-danger" style="padding: 6px 14px; font-size: 13px;">
+                删除
+              </button>
+            </form>
+
+            {% if item.ip %}
+              <form method="post" action="/admin/blacklist/add"
+                    data-confirm='将 IP「{{ item.ip }}」加入黑名单？&#10;该 IP 将无法再提交反馈。'
+                    style="display: inline;">
+                <input type="hidden" name="ip" value="{{ item.ip }}">
+                <input type="hidden" name="reason" value="从反馈 #{{ item.id }} 拉黑">
+                <button type="submit" class="btn-sm" style="padding: 6px 14px; font-size: 13px; background: #212529;">
+                  拉黑此 IP
+                </button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-emoji">📨</span>
+        <p>还没有收到任何反馈。</p>
+      </div>
+    {% endif %}
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

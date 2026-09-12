@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>批量导入菜品 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .bulk-textarea {
+      width: 100%;
+      min-height: 240px;
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 14px;
+      padding: 12px;
+      border: 1px solid transparent;
+      border-radius: var(--radius-md);
+      line-height: 1.8;
+      box-sizing: border-box;
+      background: var(--bg-subtle);
+      transition: all .2s var(--ease);
+    }
+    .bulk-textarea:focus {
+      outline: none;
+      background: var(--bg-card);
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 4px rgba(255,122,69,.12);
+    }
+    .hint {
+      background: var(--bg-subtle);
+      padding: 14px 18px;
+      border-radius: var(--radius-md);
+      font-size: 13.5px;
+      color: var(--text-primary);
+      line-height: 1.9;
+      margin-top: 16px;
+    }
+    .hint code {
+      background: #fff;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      color: var(--color-primary-dark);
+    }
+    .report-ok   { border-left: 4px solid var(--color-success); }
+    .report-fail { border-left: 4px solid var(--color-danger); }
+    .report-list {
+      list-style: none;
+      padding: 0;
+      margin: 10px 0 0;
+      font-size: 14px;
+    }
+    .report-list li {
+      padding: 7px 0;
+      border-bottom: 1px dashed var(--border);
+      line-height: 1.6;
+    }
+    .report-list li:last-child {
+      border-bottom: none;
+    }
+    .report-list code {
+      background: var(--bg-subtle);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, Monaco, monospace;
+      color: var(--text-primary);
+      font-size: 13px;
+    }
+    .fail-reason {
+      color: var(--color-danger);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/admin/dishes">← 返回菜品管理</a>
+
+    <h1 class="detail-title">批量导入菜品</h1>
+    <p class="detail-meta">把菜单贴到下面，一行一道菜，用竖线 <code style="background: var(--bg-subtle); padding: 2px 6px; border-radius: 4px;">|</code> 分隔。</p>
+
+    {% if report %}
+      {# ====== 导入报告 ====== #}
+      {% if report.ok_count > 0 %}
+        <div class="form-card report-ok" style="margin-top: 16px;">
+          <p style="margin: 0; color: var(--color-success); font-size: 16px; font-weight: bold;">
+            ✓ 成功导入 {{ report.ok_count }} 道菜
+          </p>
+          <ul class="report-list">
+            {% for name in report.ok_names %}
+              <li>· {{ name }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      {% if report.fail_count > 0 %}
+        <div class="form-card report-fail" style="margin-top: 12px;">
+          <p style="margin: 0; color: var(--color-danger); font-size: 16px; font-weight: bold;">
+            ✗ {{ report.fail_count }} 行失败（未入库）
+          </p>
+          <ul class="report-list">
+            {% for line, reason in report.fail_lines %}
+              <li>
+                <code>{{ line }}</code><br>
+                <span class="fail-reason">{{ reason }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      <p style="margin-top: 20px;">
+        <a href="/admin/dishes" class="btn">查看菜品列表</a>
+        <a href="/admin/dishes/bulk" class="btn" style="background: #888;">再导入一批</a>
+      </p>
+
+    {% else %}
+      {# ====== 输入表单 ====== #}
+      <div class="hint">
+        <strong>格式：</strong><br>
+        <code>菜名 | 价格 | 描述（描述可选）</code><br>
+        <strong>示例：</strong><br>
+        <code>黑椒牛柳饭 | 15 | 牛柳挺嫩，黑椒味重</code><br>
+        <code>番茄鸡蛋盖饭 | 12</code><br>
+        空行会被自动忽略。出错的行不会入库，会在报告里告诉你哪行错了。
+      </div>
+
+      <div class="form-card" style="margin-top: 16px;">
+        <form method="post">
+          <p>
+            <label>所属窗口</label>
+            <select name="stall_id" required>
+              {% for s in all_stalls %}
+                <option value="{{ s.id }}">
+                  {{ s.canteen_name }} · {{ s.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </p>
+          <p>
+            <label>餐次</label>
+            <select name="meal">
+              {% for m in meals %}
+                <option value="{{ m }}">{{ meal_label[m] }}</option>
+              {% endfor %}
+            </select>
+          </p>
+          <p>
+            <label>菜单文字</label>
+            <textarea name="bulk_text" class="bulk-textarea" required
+placeholder="黑椒牛柳饭 | 15 | 牛柳挺嫩，黑椒味重
+番茄鸡蛋盖饭 | 12
+黄焖鸡米饭 | 16 | 分量大，土豆入味"></textarea>
+          </p>
+          <p>
+            <button type="submit" class="btn">开始导入</button>
+          </p>
+        </form>
+      </div>
+    {% endif %}
+
+  </div>
+
+  {% include '_footer.html' %}
+
+</body>
+</html>

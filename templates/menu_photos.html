@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>菜单照片 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .photo-card {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .photo-card img {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+      display: block;
+      cursor: pointer;
+    }
+    .photo-info {
+      padding: 12px 14px;
+    }
+    .photo-info p {
+      margin: 4px 0;
+      font-size: 14px;
+    }
+    .photo-tag {
+      display: inline-block;
+      background: #fff4e6;
+      color: #d9480f;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+    .photo-note {
+      color: #666;
+      font-size: 13px;
+    }
+    .photo-time {
+      color: #999;
+      font-size: 12px;
+    }
+    [data-theme="dark"] .photo-card {
+      background: var(--bg-card);
+    }
+    [data-theme="dark"] .photo-tag {
+      background: var(--color-primary-light);
+    }
+    [data-theme="dark"] .photo-note {
+      color: var(--text-secondary);
+    }
+    [data-theme="dark"] .photo-time {
+      color: var(--text-tertiary);
+    }
+  </style>
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/admin">← 返回后台首页</a>
+
+    <div class="header-row">
+      <div>
+        <h1 class="site-title">菜单照片</h1>
+        <p class="site-subtitle">共 {{ photos|length }} 张</p>
+      </div>
+      <a href="/menu_upload" class="btn" style="margin-top: 24px;">+ 上传照片</a>
+    </div>
+
+    {% if photos %}
+      <div class="photo-grid">
+        {% for p in photos %}
+          <div class="photo-card">
+            <a href="/static/menu_photos/{{ p.filename }}" target="_blank">
+              <img src="/static/menu_photos/{{ p.filename }}" alt="菜单照片">
+            </a>
+            <div class="photo-info">
+              <p>
+                <span class="photo-tag">{{ meal_label[p.meal] }}</span>
+              </p>
+              {% if p.note %}
+                <p class="photo-note">{{ p.note }}</p>
+              {% endif %}
+              <p class="photo-time">{{ p.uploaded_at }}</p>
+              <a href="/menu_photos/{{ p.id }}/ocr"
+                 class="btn"
+                 style="background: #1971c2; font-size: 13px; padding: 6px 14px; margin-top: 8px;">
+                🔍 OCR 识别
+              </a>
+              <form method="post" action="/menu_photos/{{ p.id }}/delete"
+                    data-confirm='确定删除这张照片？'
+                    style="margin-top: 8px;">
+                <button type="submit" class="btn"
+                        style="background: #c92a2a; font-size: 13px; padding: 6px 14px;">
+                  删除
+                </button>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p style="color: #666; margin-top: 20px;">还没上传过照片。</p>
+    {% endif %}
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

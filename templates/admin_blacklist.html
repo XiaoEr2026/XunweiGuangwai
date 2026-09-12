@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IP 黑名单 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/feedback/list">← 返回反馈列表</a>
+
+    <h1 class="detail-title">IP 黑名单</h1>
+    <p class="detail-meta">
+      黑名单里的 IP 将无法提交反馈。<br>
+      ⚠️ <strong>注意</strong>：如果学校用校园网共享出口 IP，拉黑一个 IP 可能影响整栋楼的学生，谨慎使用。
+    </p>
+
+    <div class="form-card">
+      <h2 style="margin: 0 0 12px; font-size: 16px;">手动添加 IP</h2>
+      <form method="post" class="form-inline">
+        <div>
+          <label>IP 地址</label>
+          <input type="text" name="ip" required maxlength="60" placeholder="例：192.168.1.100">
+        </div>
+        <div>
+          <label>原因（可选）</label>
+          <input type="text" name="reason" maxlength="60" placeholder="例：深夜刷屏">
+        </div>
+        <div style="flex: 0 0 auto; min-width: auto;">
+          <button type="submit" class="btn">加入黑名单</button>
+        </div>
+      </form>
+    </div>
+
+    {% if items %}
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>IP</th>
+            <th>原因</th>
+            <th>加入时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for it in items %}
+            <tr>
+              <td><code style="font-size: 13px;">{{ it.ip }}</code></td>
+              <td>{{ it.reason or "—" }}</td>
+              <td style="color: var(--text-tertiary); font-size: 13px;">{{ it.created_at }}</td>
+              <td>
+                <form method="post" action="/admin/blacklist/{{ it.id }}/delete"
+                      data-confirm='解除对「{{ it.ip }}」的封禁？'
+                      style="display: inline;">
+                  <button type="submit" class="btn-sm btn-sm-danger">解除封禁</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-emoji">✅</span>
+        <p>黑名单是空的，一切正常。</p>
+      </div>
+    {% endif %}
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

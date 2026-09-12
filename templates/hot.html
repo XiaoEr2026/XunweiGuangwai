@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>热门榜单 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <h1 class="detail-title">🔥 热门榜单</h1>
+    <p class="detail-meta">由同学们的真实评价和收藏产生</p>
+
+    {# ============ 好评榜 ============ #}
+    <section class="rank-section">
+      <h2 class="rank-title">
+        <span class="rank-title-emoji">⭐</span>
+        好评榜
+        <span class="rank-title-sub">平均分最高（至少 3 条评价）</span>
+      </h2>
+
+      {% if top_rated %}
+        <ol class="rank-list-new">
+          {% for d in top_rated %}
+            <li class="rank-item">
+              <span class="rank-num rank-num-{{ loop.index if loop.index <= 3 else 'n' }}">
+                {{ loop.index }}
+              </span>
+              <a class="rank-link" href="/dish/{{ d.id }}">
+                <div class="rank-name">{{ d.name }}</div>
+                <div class="rank-loc">🏫 {{ d.canteen_name }} · {{ d.stall_name }}</div>
+              </a>
+              <div class="rank-value">
+                <span class="rank-score">★ {{ d.avg_rating }}</span>
+                <span class="rank-count">{{ d.review_count }} 条</span>
+              </div>
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <div class="empty-state" style="margin-top: 8px;">
+          <span class="empty-emoji">⭐</span>
+          <p>还没有菜达到"3 条以上评价"，快去评价吧！</p>
+        </div>
+      {% endif %}
+    </section>
+
+    {# ============ 人气榜 ============ #}
+    <section class="rank-section">
+      <h2 class="rank-title">
+        <span class="rank-title-emoji">🔥</span>
+        人气榜
+        <span class="rank-title-sub">评价最多</span>
+      </h2>
+
+      {% if hottest %}
+        <ol class="rank-list-new">
+          {% for d in hottest %}
+            <li class="rank-item">
+              <span class="rank-num rank-num-{{ loop.index if loop.index <= 3 else 'n' }}">
+                {{ loop.index }}
+              </span>
+              <a class="rank-link" href="/dish/{{ d.id }}">
+                <div class="rank-name">{{ d.name }}</div>
+                <div class="rank-loc">🏫 {{ d.canteen_name }} · {{ d.stall_name }}</div>
+              </a>
+              <div class="rank-value">
+                <span class="rank-score">★ {{ d.avg_rating }}</span>
+                <span class="rank-count">{{ d.review_count }} 条</span>
+              </div>
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <div class="empty-state" style="margin-top: 8px;">
+          <span class="empty-emoji">🔥</span>
+          <p>还没有人评价，抢个先？</p>
+        </div>
+      {% endif %}
+    </section>
+
+    {# ============ 收藏榜 ============ #}
+    <section class="rank-section">
+      <h2 class="rank-title">
+        <span class="rank-title-emoji">❤️</span>
+        收藏榜
+        <span class="rank-title-sub">被加收藏最多</span>
+      </h2>
+
+      {% if fav_top %}
+        <ol class="rank-list-new">
+          {% for d in fav_top %}
+            <li class="rank-item">
+              <span class="rank-num rank-num-{{ loop.index if loop.index <= 3 else 'n' }}">
+                {{ loop.index }}
+              </span>
+              <a class="rank-link" href="/dish/{{ d.id }}">
+                <div class="rank-name">{{ d.name }}</div>
+                <div class="rank-loc">🏫 {{ d.canteen_name }} · {{ d.stall_name }}</div>
+              </a>
+              <div class="rank-value">
+                <span class="rank-score">❤ {{ d.fav_count }}</span>
+              </div>
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <div class="empty-state" style="margin-top: 8px;">
+          <span class="empty-emoji">❤️</span>
+          <p>还没有人收藏，去首页点个心吧。</p>
+        </div>
+      {% endif %}
+    </section>
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

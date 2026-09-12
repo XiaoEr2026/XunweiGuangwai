@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ dish.name }} - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    {# ==================== 面包屑 ==================== #}
+    <div style="margin: 24px 0 10px; font-size: 14px; color: var(--text-secondary);">
+      <a href="/" style="color: var(--text-secondary); text-decoration: none;">🏫 饭堂</a>
+      <span style="margin: 0 6px;">›</span>
+      <a href="/canteen/{{ dish.canteen_id }}" style="color: var(--text-secondary); text-decoration: none;">{{ dish.canteen_name }}</a>
+      <span style="margin: 0 6px;">›</span>
+      <a href="/stall/{{ dish.stall_id }}" style="color: var(--text-secondary); text-decoration: none;">{{ dish.stall_name }}</a>
+    </div>
+
+    {# ==================== 徽章 ==================== #}
+    {% if dish.is_signature or dish.is_new or dish.spicy_level > 0 %}
+      <div class="badge-row">
+        {% if dish.is_signature %}
+          <span class="badge badge-signature">招牌</span>
+        {% endif %}
+        {% if dish.is_new %}
+          <span class="badge badge-new">新品</span>
+        {% endif %}
+        {% if dish.spicy_level > 0 %}
+          <span class="badge badge-spicy">
+            {{ spicy_labels[dish.spicy_level] }}
+          </span>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {# ==================== 菜品大图 ==================== #}
+    {% if dish.image %}
+      <div class="dish-hero">
+        <img src="/static/dish_images/{{ dish.image }}" alt="{{ dish.name }}">
+      </div>
+    {% endif %}
+
+    {# ==================== 基本信息 ==================== #}
+    <h1 class="detail-title">{{ dish.name }}</h1>
+    <p class="detail-meta">窗口：{{ dish.canteen_name }} · {{ dish.stall_name }}</p>
+    <p class="detail-meta">价格：<span class="dish-price">￥{{ dish.price }}</span></p>
+    <p class="detail-meta">
+      平均分：<span class="dish-rating">★ {{ dish.avg_rating or "暂无" }} / 5</span>
+      （共 {{ dish.review_count }} 条）
+      · 👁 {{ dish.view_count }} 次浏览
+    </p>
+    <p class="detail-meta">{{ dish.description }}</p>
+
+    <hr>
+
+    {# ==================== 评价列表标题 + 排序 ==================== #}
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <h2 style="margin: 0;">全部评价</h2>
+
+      {% if reviews %}
+        <div class="sort-tabs">
+          <a href="/dish/{{ dish.id }}?sort=helpful"
+             class="sort-tab {% if sort == 'helpful' %}active{% endif %}">
+            👍 最有帮助
+          </a>
+          <a href="/dish/{{ dish.id }}?sort=new"
+             class="sort-tab {% if sort == 'new' %}active{% endif %}">
+            🕐 最新
+          </a>
+        </div>
+      {% endif %}
+    </div>
+
+    {# ==================== 评价列表 ==================== #}
+    {% if reviews %}
+      {% for r in reviews %}
+        <div class="review">
+          <p>
+            <span class="review-author">{{ r.author }}</span>
+            <span class="review-rating">★ {{ r.rating }} / 5</span>
+            {% if r.visitor_id and r.visitor_id == my_visitor_id %}
+              <span class="my-tag">我发的</span>
+            {% endif %}
+          </p>
+
+          <p style="white-space: pre-wrap;">{{ r.content }}</p>
+
+          {% if r.photo %}
+            <p>
+              <img class="review-photo" src="/static/uploads/{{ r.photo }}" alt="实拍">
+            </p>
+          {% endif %}
+
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <p class="review-time" style="margin: 0;">{{ r.created_at }}</p>
+
+            <div style="display: flex; gap: 8px; align-items: center;">
+              {# 只有自己发的评论才显示删除按钮 #}
+              {% if r.visitor_id and r.visitor_id == my_visitor_id %}
+                <form method="post" action="/review/{{ r.id }}/delete-own"
+                      data-confirm='删除你发的这条评论？'
+                      style="display: inline;">
+                  <button type="submit" class="review-del-btn">删除</button>
+                </form>
+              {% endif %}
+
+              {# 点赞按钮 #}
+              <button type="button"
+                      class="like-btn {% if r.is_liked %}liked{% endif %}"
+                      data-review-id="{{ r.id }}"
+                      onclick="toggleLike(event, this);">
+                <span class="like-icon">👍</span>
+                <span class="like-count">{{ r.like_count }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p>还没有人评价，抢个沙发？</p>
+    {% endif %}
+
+    <hr>
+
+    {# ==================== 写评价 ==================== #}
+    <h2>写一条评价</h2>
+
+    <div class="form-card">
+      <form method="post" enctype="multipart/form-data">
+        <p>
+          <label>昵称</label>
+          <input type="text" name="author" required maxlength="20">
+        </p>
+        <p>
+          <label>评分</label>
+          <select name="rating">
+            <option value="5">5 分 · 强烈推荐</option>
+            <option value="4">4 分 · 不错</option>
+            <option value="3">3 分 · 一般</option>
+            <option value="2">2 分 · 不太行</option>
+            <option value="1">1 分 · 差评</option>
+          </select>
+        </p>
+        <p>
+          <label>评价</label>
+          <textarea name="content" rows="4" required maxlength="200"></textarea>
+        </p>
+        <p>
+          <label>实拍照片（可选）</label>
+          <input type="file" name="photo" accept="image/*">
+        </p>
+        <p>
+          <button type="submit" class="btn">提交评价</button>
+        </p>
+      </form>
+    </div>
+
+  </div>
+
+  <script>
+    function toggleLike(event, btn) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      var reviewId = btn.getAttribute('data-review-id');
+      if (!reviewId) return;
+
+      fetch('/review/' + reviewId + '/like', { method: 'POST' })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (!data.ok) return;
+          btn.classList.toggle('liked', data.liked);
+          var c = btn.querySelector('.like-count');
+          if (c) c.innerText = data.count;
+        })
+        .catch(function () {
+          alert('网络异常，请稍后再试');
+        });
+    }
+  </script>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

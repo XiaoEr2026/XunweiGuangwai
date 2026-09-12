@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>评论管理 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/admin">← 返回后台首页</a>
+
+    <h1 class="detail-title">评论管理</h1>
+    <p class="detail-meta">
+      {% if current_dish %}
+        正在查看：<strong>{{ current_dish.canteen_name }} · {{ current_dish.stall_name }} · {{ current_dish.name }}</strong>
+        的评论（{{ reviews|length }} 条）
+        · <a href="/admin/reviews" style="color: var(--color-primary-dark);">查看全部</a>
+      {% else %}
+        共 {{ reviews|length }} 条评论（最多显示 200 条）
+      {% endif %}
+    </p>
+
+    {# 菜品筛选下拉 #}
+    <div class="form-card" style="margin-top: 16px;">
+      <form method="get" class="form-inline">
+        <div style="flex: 2;">
+          <label>按菜品筛选</label>
+          <select name="dish_id" onchange="this.form.submit();">
+            <option value="">— 全部菜品 —</option>
+            {% for d in all_dishes %}
+              <option value="{{ d.id }}"
+                      {% if dish_id == d.id|string %}selected{% endif %}>
+                {{ d.canteen_name }} · {{ d.stall_name }} · {{ d.name }}
+                （{{ d.review_count }} 条）
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div style="flex: 0 0 auto; min-width: auto;">
+          <a href="/admin/reviews" class="btn" style="background: #868e96;">重置</a>
+        </div>
+      </form>
+    </div>
+
+    {# 评论列表 #}
+    {% if reviews %}
+      {% for r in reviews %}
+        <div class="review" style="margin-top: 14px;">
+          <p>
+            <span class="review-author">{{ r.author }}</span>
+            <span class="review-rating">★ {{ r.rating }} / 5</span>
+            <span style="color: var(--text-tertiary); font-size: 12.5px; margin-left: 8px;">
+              👍 {{ r.like_count }}
+            </span>
+          </p>
+
+          {# 关联菜品（在"全部"视图下才显示） #}
+          {% if not current_dish %}
+            <p style="font-size: 13px; color: var(--text-secondary); margin: 4px 0;">
+              🍽️
+              <a href="/dish/{{ r.dish_id }}"
+                 style="color: var(--text-secondary); text-decoration: none;">
+                {{ r.canteen_name }} · {{ r.stall_name }} · <strong>{{ r.dish_name }}</strong>
+              </a>
+            </p>
+          {% endif %}
+
+          <p style="white-space: pre-wrap; margin-top: 8px;">{{ r.content }}</p>
+
+          {% if r.photo %}
+            <p>
+              <img src="/static/uploads/{{ r.photo }}"
+                   alt="实拍"
+                   style="max-width: 260px; border-radius: var(--radius-md);">
+            </p>
+          {% endif %}
+
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px;">
+            <span class="review-time">{{ r.created_at }}</span>
+
+            <form method="post" action="/review/{{ r.id }}/delete"
+                  data-confirm='删除这条评论？&#10;作者：{{ r.author }}&#10;内容：{{ r.content|truncate(30) }}'
+                  style="display: inline;">
+              <input type="hidden" name="back" value="{{ request.full_path }}">
+              <button type="submit" class="btn-sm btn-sm-danger">删除</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-emoji">💬</span>
+        <p>没有评论。</p>
+      </div>
+    {% endif %}
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

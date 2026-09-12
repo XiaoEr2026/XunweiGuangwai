@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>关于 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <h1 class="detail-title">关于寻味广外</h1>
+    <p class="detail-meta">校园食堂信息与点评平台</p>
+
+    <hr>
+
+    <h2 class="about-section-title">📖 项目简介</h2>
+    <p class="about-p">
+      寻味广外是一个面向全校师生的校园食堂信息平台。我们希望解决一个简单的日常问题：
+      <strong>「今天去哪个窗口吃？」</strong>
+    </p>
+    <p class="about-p">
+      平台整合了各饭堂楼层的菜单信息，学生可以按楼层、窗口浏览菜品，查看其他同学的评价与实拍照片，
+      也可以自己发表评论。每天更新的菜单数据和真实的用户评价，帮助大家更快做出选择。
+    </p>
+
+    <h2 class="about-section-title">✨ 主要功能</h2>
+    <ul class="about-list">
+      <li>按饭堂楼层 → 窗口浏览菜单</li>
+      <li>搜索菜名、窗口、口味</li>
+      <li>查看其他同学的评价与实拍照片</li>
+      <li>自己提交评价和照片</li>
+      <li>招牌菜品自动统计（根据学生评分）</li>
+      <li>意见反馈通道</li>
+    </ul>
+
+    <h2 class="about-section-title">👥 开发团队</h2>
+    <p class="about-p">
+      本项目由 <strong>07 部</strong> 策划开发，作为 2026 学年上学期企划项目。
+    </p>
+    <div class="about-team">
+      <div class="about-team-item">
+        <div class="about-team-role">策划 / 开发</div>
+        <div class="about-team-name"> S2AL3 郭瑾逵</div>
+      </div>
+      <!-- 想加成员名字就在这里复制一行 -->
+      <!--
+      <div class="about-team-item">
+        <div class="about-team-role">前端</div>
+        <div class="about-team-name">张三</div>
+      </div>
+      -->
+    </div>
+
+    <h2 class="about-section-title">📮 联系我们</h2>
+    <p class="about-p">
+      对平台有任何建议、bug 反馈、新功能想法，欢迎通过
+      <a href="/feedback" style="color: var(--color-primary-dark);">意见反馈</a>
+      提交。我们会尽快处理。
+    </p>
+    <p class="about-p">
+      如果涉及比较紧急的事项，可以直接联系 07 部成员。
+    </p>
+
+    <h2 class="about-section-title">⚠️ 免责声明</h2>
+    <p class="about-p" style="color: var(--text-secondary); font-size: 13.5px;">
+      本平台由学生自主开发，非官方项目。菜单数据每日更新，但可能存在延迟或错误，
+      请以食堂现场公示为准。学生评价仅代表个人观点，不代表平台立场。
+    </p>
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

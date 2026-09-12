@@ -1,0 +1,58 @@
+{# ============================================================
+   _dish_card.html —— 菜品卡片通用模板
+   使用前提：外层必须有一个 dish 变量
+   ============================================================ #}
+<a class="card-link" href="/dish/{{ dish.id }}">
+  <div class="dish-card">
+
+    {# 图片区 #}
+    <div class="dish-card-image {% if not dish.image %}dish-card-image-empty{% endif %}">
+      {% if dish.image %}
+        <img src="/static/dish_images/{{ dish.image }}" alt="{{ dish.name }}" loading="lazy">
+      {% else %}
+        <span>🍽️</span>
+      {% endif %}
+
+      {% if dish.is_signature or dish.is_new or dish.spicy_level > 0 %}
+        <div class="card-badges">
+          {% if dish.is_signature %}
+            <span class="badge badge-signature">招牌</span>
+          {% endif %}
+          {% if dish.is_new %}
+            <span class="badge badge-new">新品</span>
+          {% endif %}
+          {% if dish.spicy_level > 0 %}
+            <span class="badge badge-spicy">{{ spicy_labels[dish.spicy_level] }}</span>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+
+    {# 收藏按钮（绝对定位在右上角） #}
+    <button type="button"
+            class="fav-btn {% if dish.is_favorited %}active{% endif %}"
+            data-dish-id="{{ dish.id }}"
+            onclick="toggleFav(event, this);"
+            aria-label="收藏">
+      <span class="fav-icon">{% if dish.is_favorited %}❤️{% else %}🤍{% endif %}</span>
+    </button>
+
+    {# 内容区 #}
+    <div class="dish-card-body">
+      <h2>{{ dish.name }}</h2>
+      {% if dish.canteen_name is defined %}
+        <p class="dish-location">🏫 {{ dish.canteen_name }} · {{ dish.stall_name }}</p>
+      {% endif %}
+      <p class="dish-price">￥{{ dish.price }}</p>
+      <p class="dish-rating">
+        ★ {{ dish.avg_rating or "暂无" }}
+        <small>（{{ dish.review_count }} 条评价）</small>
+      </p>
+      <p class="dish-views">
+        👁 {{ dish.view_count }} 次浏览
+      </p>
+      <p class="dish-desc">{{ dish.description }}</p>
+    </div>
+
+  </div>
+</a>

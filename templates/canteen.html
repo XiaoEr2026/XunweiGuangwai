@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ canteen.name }} - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/">← 返回饭堂列表</a>
+
+    <h1 class="detail-title">{{ canteen.name }}</h1>
+    <p class="detail-meta">共 {{ stalls|length }} 个窗口</p>
+
+    {% if stalls %}
+      <div class="canteen-grid" style="margin-top: 20px;">
+        {% for s in stalls %}
+          <a class="canteen-card" href="/stall/{{ s.id }}">
+            <div class="canteen-icon">🍽️</div>
+            <div class="canteen-info">
+              <h3>{{ s.name }}</h3>
+              <p>{{ s.dish_count }} 道菜</p>
+            </div>
+            <div class="canteen-arrow">→</div>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-emoji">🍽️</span>
+        <p>这个楼层还没有窗口。</p>
+      </div>
+    {% endif %}
+
+  </div>
+
+  {% include '_footer.html' %}
+
+</body>
+</html>

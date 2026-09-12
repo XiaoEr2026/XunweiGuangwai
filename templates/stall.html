@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ stall.name }} - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/canteen/{{ stall.canteen_id }}">← 返回 {{ stall.canteen_name }}</a>
+
+    <h1 class="detail-title">{{ stall.name }}</h1>
+    <p class="detail-meta">{{ stall.canteen_name }} · 共 {{ dishes|length }} 道菜</p>
+
+    {# 餐次筛选 #}
+    <div class="meal-tabs" style="margin-top: 16px;">
+      <a href="/stall/{{ stall.id }}"
+         class="meal-tab {% if current_meal == 'all' %}active{% endif %}">全部</a>
+      {% for m in meals %}
+        <a href="/stall/{{ stall.id }}?meal={{ m }}"
+           class="meal-tab {% if current_meal == m %}active{% endif %}">
+          {{ meal_label[m] }}
+        </a>
+      {% endfor %}
+    </div>
+
+    {% if dishes %}
+      <div class="dish-list">
+        {% for dish in dishes %}
+          {% include '_dish_card.html' %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-emoji">🍽️</span>
+        <p>这个窗口还没有上架菜品。</p>
+      </div>
+    {% endif %}
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

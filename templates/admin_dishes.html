@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>菜品管理 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/admin">← 返回后台首页</a>
+
+    <div class="header-row">
+      <div>
+        <h1 class="site-title">菜品管理</h1>
+        <p class="site-subtitle">共 {{ dishes|length }} 道菜</p>
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 24px;">
+        <a href="/admin/dishes/bulk" class="btn" style="background: #1971c2;">批量导入</a>
+        <a href="/dish/new" class="btn">+ 添加菜品</a>
+      </div>
+    </div>
+
+    {% if dishes %}
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>菜名</th>
+            <th>楼层</th>
+            <th>窗口</th>
+            <th>餐次</th>
+            <th>价格</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in dishes %}
+            <tr>
+              <td>{{ d.id }}</td>
+              <td><strong>{{ d.name }}</strong></td>
+              <td>{{ d.canteen_name }}</td>
+              <td>{{ d.stall_name }}</td>
+              <td><span class="meal-tag">{{ meal_label[d.meal] }}</span></td>
+              <td>￥{{ d.price }}</td>
+              <td>
+                <a href="/admin/reviews?dish_id={{ d.id }}" class="btn-sm"
+                   style="background: #7048e8;">💬 评论</a>
+                <a href="/dish/{{ d.id }}/edit" class="btn-sm btn-sm-info">编辑</a>
+                <form method="post" action="/dish/{{ d.id }}/delete"
+                      data-confirm='删除「{{ d.name }}」及它的所有评价？此操作不可恢复。'
+                      style="display: inline;">
+                  <button type="submit" class="btn-sm btn-sm-danger">删除</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-emoji">📋</span>
+        <p>还没有任何菜品。</p>
+      </div>
+    {% endif %}
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>
