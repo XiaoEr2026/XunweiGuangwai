@@ -5,6 +5,13 @@ import time
 import secrets
 import re
 
+# 设置时区为北京时间（PythonAnywhere 服务器默认是 UTC）
+os.environ['TZ'] = 'Asia/Shanghai'
+try:
+    time.tzset()   # Linux/Mac 生效；Windows 会报 AttributeError，已忽略
+except AttributeError:
+    pass
+
 from flask import (
     Flask, render_template, request, redirect, url_for, session,
     g, jsonify, flash
