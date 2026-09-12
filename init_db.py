@@ -56,7 +56,7 @@ CREATE TABLE reviews (
     rating     INTEGER NOT NULL,
     content    TEXT,
     photo      TEXT,
-    created_at TEXT DEFAULT (datetime('now', 'localtime'))
+    created_at TEXT DEFAULT (datetime('now', '+8 hours'))
 )
 """)
 
@@ -68,7 +68,7 @@ CREATE TABLE feedback (
     content    TEXT NOT NULL,
     contact    TEXT,
     status     TEXT NOT NULL DEFAULT 'new',
-    created_at TEXT DEFAULT (datetime('now', 'localtime'))
+    created_at TEXT DEFAULT (datetime('now', '+8 hours'))
 )
 """)
 
@@ -79,7 +79,7 @@ CREATE TABLE menu_photos (
     filename    TEXT NOT NULL,
     meal        TEXT NOT NULL,
     note        TEXT,
-    uploaded_at TEXT DEFAULT (datetime('now', 'localtime')),
+    uploaded_at TEXT DEFAULT (datetime('now', '+8 hours')),
     processed   INTEGER NOT NULL DEFAULT 0
 )
 """)

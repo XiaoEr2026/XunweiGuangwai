@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS page_views (
     path        TEXT NOT NULL,
     visitor_id  TEXT,
     ip          TEXT,
-    created_at  TEXT DEFAULT (datetime('now', 'localtime'))
+    created_at  TEXT DEFAULT (datetime('now', '+8 hours'))
 )
 """)
 

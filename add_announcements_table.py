@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS announcements (
     level       TEXT NOT NULL DEFAULT 'info',
     is_pinned   INTEGER NOT NULL DEFAULT 0,
     expires_at  TEXT,
-    created_at  TEXT DEFAULT (datetime('now', 'localtime'))
+    created_at  TEXT DEFAULT (datetime('now', '+8 hours'))
 )
 """)
 

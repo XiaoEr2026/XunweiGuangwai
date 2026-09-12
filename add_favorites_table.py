@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS favorites (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     visitor_id  TEXT NOT NULL,
     dish_id     INTEGER NOT NULL,
-    created_at  TEXT DEFAULT (datetime('now', 'localtime')),
+    created_at  TEXT DEFAULT (datetime('now', '+8 hours')),
     UNIQUE(visitor_id, dish_id)
 )
 """)

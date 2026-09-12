@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS announcement_reads (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     visitor_id      TEXT NOT NULL,
     announcement_id INTEGER NOT NULL,
-    read_at         TEXT DEFAULT (datetime('now', 'localtime')),
+    read_at         TEXT DEFAULT (datetime('now', '+8 hours')),
     UNIQUE(visitor_id, announcement_id)
 )
 """)

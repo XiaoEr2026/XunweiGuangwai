@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS review_likes (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     review_id   INTEGER NOT NULL,
     visitor_id  TEXT NOT NULL,
-    created_at  TEXT DEFAULT (datetime('now', 'localtime')),
+    created_at  TEXT DEFAULT (datetime('now', '+8 hours')),
     UNIQUE(review_id, visitor_id)
 )
 """)

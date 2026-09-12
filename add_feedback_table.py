@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS feedback (
     content    TEXT NOT NULL,
     contact    TEXT,
     status     TEXT NOT NULL DEFAULT 'new',
-    created_at TEXT DEFAULT (datetime('now', 'localtime'))
+    created_at TEXT DEFAULT (datetime('now', '+8 hours'))
 )
 """)
 

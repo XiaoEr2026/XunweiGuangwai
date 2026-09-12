@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS posts (
     contact        TEXT,
     stall_id       INTEGER,
     visitor_id     TEXT,
-    created_at     TEXT DEFAULT (datetime('now', 'localtime')),
-    last_reply_at  TEXT DEFAULT (datetime('now', 'localtime'))
+    created_at     TEXT DEFAULT (datetime('now', '+8 hours')),
+    last_reply_at  TEXT DEFAULT (datetime('now', '+8 hours'))
 )
 """)
 
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS post_replies (
     author      TEXT NOT NULL,
     content     TEXT NOT NULL,
     visitor_id  TEXT,
-    created_at  TEXT DEFAULT (datetime('now', 'localtime'))
+    created_at  TEXT DEFAULT (datetime('now', '+8 hours'))
 )
 """)
 

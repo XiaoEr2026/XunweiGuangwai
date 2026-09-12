@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS menu_photos (
     filename    TEXT NOT NULL,
     meal        TEXT NOT NULL,
     note        TEXT,
-    uploaded_at TEXT DEFAULT (datetime('now', 'localtime')),
+    uploaded_at TEXT DEFAULT (datetime('now', '+8 hours')),
     processed   INTEGER NOT NULL DEFAULT 0
 )
 """)

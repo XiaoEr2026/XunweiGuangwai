@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS ip_blacklist (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     ip         TEXT NOT NULL UNIQUE,
     reason     TEXT,
-    created_at TEXT DEFAULT (datetime('now', 'localtime'))
+    created_at TEXT DEFAULT (datetime('now', '+8 hours'))
 )
 """)
 print("✓ ip_blacklist 表已就绪")
