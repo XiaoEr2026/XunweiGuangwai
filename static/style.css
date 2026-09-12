@@ -2714,3 +2714,25 @@ a.board-card:hover {
   font-size: 12.5px;
   margin: 2px 0 0 !important;
 }
+
+/* ============================================================
+   随机选菜弹窗：隐藏滚动条 + 修复圆角
+   ============================================================ */
+
+/* 隐藏滚动条（保留滚动功能） */
+.random-modal-card::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+.random-modal-card {
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* IE/Edge */
+  /* 让内容不紧贴右边，视觉更舒服 */
+  padding-right: 24px;
+}
+
+/* 弹窗高度稍微收一点，减少出现滚动条的概率 */
+.random-modal-card {
+  max-height: 85vh;
+}
