@@ -6,11 +6,11 @@ import secrets
 import re
 
 # 设置时区为北京时间（PythonAnywhere 服务器默认是 UTC）
-os.environ['TZ'] = 'Asia/Shanghai'
-try:
-    time.tzset()   # Linux/Mac 生效；Windows 会报 AttributeError，已忽略
-except AttributeError:
-    pass
+# os.environ['TZ'] = 'Asia/Shanghai'
+# try:
+#     time.tzset()   # Linux/Mac 生效；Windows 会报 AttributeError，已忽略
+# except AttributeError:
+#     pass
 
 from flask import (
     Flask, render_template, request, redirect, url_for, session,
@@ -244,7 +244,7 @@ def inject_globals():
             row = conn.execute("""
                 SELECT COUNT(*) AS c FROM announcements
                 WHERE (expires_at IS NULL
-                       OR expires_at >= datetime('now', 'localtime'))
+                       OR expires_at >= datetime('now', '+8 hours'))
                   AND id NOT IN (
                       SELECT announcement_id FROM announcement_reads
                       WHERE visitor_id = ?
@@ -282,7 +282,7 @@ def home():
     announcements = conn.execute("""
         SELECT * FROM announcements
         WHERE expires_at IS NULL
-           OR expires_at >= datetime('now', 'localtime')
+           OR expires_at >= datetime('now', '+8 hours')
         ORDER BY is_pinned DESC, id DESC
         LIMIT 3
     """).fetchall()
@@ -645,7 +645,7 @@ def dish_detail(dish_id):
             dup = conn.execute("""
                 SELECT 1 FROM reviews
                 WHERE dish_id = ? AND visitor_id = ? AND content = ?
-                  AND created_at >= datetime('now', '-1 day', 'localtime')
+                  AND created_at >= datetime('now', '-1 day', '+8 hours')
             """, (dish_id, vid, content)).fetchone()
             if dup:
                 conn.close()
@@ -751,7 +751,7 @@ def announcements_list():
                    WHERE ar.announcement_id = a.id AND ar.visitor_id = ?
                ) AS is_read,
                CASE WHEN a.expires_at IS NULL
-                     OR a.expires_at >= datetime('now', 'localtime')
+                     OR a.expires_at >= datetime('now', '+8 hours')
                     THEN 1 ELSE 0 END AS is_active
         FROM announcements a
         ORDER BY a.is_pinned DESC, a.id DESC
@@ -904,13 +904,13 @@ def board_new():
             dup = conn.execute("""
                 SELECT 1 FROM posts
                 WHERE visitor_id = ? AND content = ?
-                  AND created_at >= datetime('now', '-1 day', 'localtime')
+                  AND created_at >= datetime('now', '-1 day', '+8 hours')
             """, (vid, content)).fetchone()
 
             recent = conn.execute("""
                 SELECT COUNT(*) AS c FROM posts
                 WHERE visitor_id = ?
-                  AND created_at >= datetime('now', '-10 minutes', 'localtime')
+                  AND created_at >= datetime('now', '-10 minutes', '+8 hours')
             """, (vid,)).fetchone()["c"]
 
             if dup:
@@ -930,7 +930,7 @@ def board_new():
                     INSERT INTO posts
                     (author, content, when_time, contact, stall_id, visitor_id,
                      last_reply_at)
-                    VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
+                    VALUES (?, ?, ?, ?, ?, ?, datetime('now', '+8 hours'))
                 """, (author, content, when_time or None, contact or None,
                       stall_val, vid))
                 conn.commit()
@@ -981,13 +981,13 @@ def board_detail(post_id):
             dup = conn.execute("""
                 SELECT 1 FROM post_replies
                 WHERE visitor_id = ? AND post_id = ? AND content = ?
-                  AND created_at >= datetime('now', '-1 day', 'localtime')
+                  AND created_at >= datetime('now', '-1 day', '+8 hours')
             """, (vid, post_id, content)).fetchone()
 
             recent = conn.execute("""
                 SELECT COUNT(*) AS c FROM post_replies
                 WHERE visitor_id = ? AND post_id = ?
-                  AND created_at >= datetime('now', '-1 minute', 'localtime')
+                  AND created_at >= datetime('now', '-1 minute', '+8 hours')
             """, (vid, post_id)).fetchone()["c"]
 
             if dup:
@@ -998,7 +998,7 @@ def board_detail(post_id):
                     VALUES (?, ?, ?, ?)
                 """, (post_id, author, content, vid))
                 conn.execute("""
-                    UPDATE posts SET last_reply_at = datetime('now', 'localtime')
+                    UPDATE posts SET last_reply_at = datetime('now', '+8 hours')
                     WHERE id = ?
                 """, (post_id,))
                 conn.commit()
@@ -1596,7 +1596,7 @@ def feedback():
         else:
             recent = conn.execute("""
                 SELECT COUNT(*) AS c FROM feedback
-                WHERE ip = ? AND created_at >= datetime('now', '-5 minutes', 'localtime')
+                WHERE ip = ? AND created_at >= datetime('now', '-5 minutes', '+8 hours')
             """, (ip,)).fetchone()["c"]
 
             if recent >= 3:
@@ -1605,7 +1605,7 @@ def feedback():
                 dup = conn.execute("""
                     SELECT id FROM feedback
                     WHERE content = ?
-                      AND created_at >= datetime('now', '-1 day', 'localtime')
+                      AND created_at >= datetime('now', '-1 day', '+8 hours')
                     LIMIT 1
                 """, (content,)).fetchone()
 
@@ -2158,12 +2158,12 @@ def admin_stats():
     # ============== 访问量统计 ==============
     today_views    = conn.execute("""
         SELECT COUNT(*) AS c FROM page_views
-        WHERE date(created_at) = date('now', 'localtime')
+        WHERE date(created_at) = date('now', '+8 hours')
     """).fetchone()["c"]
 
     today_visitors = conn.execute("""
         SELECT COUNT(DISTINCT visitor_id) AS c FROM page_views
-        WHERE date(created_at) = date('now', 'localtime')
+        WHERE date(created_at) = date('now', '+8 hours')
     """).fetchone()["c"]
 
     total_views    = conn.execute(
@@ -2179,7 +2179,7 @@ def admin_stats():
                COUNT(*) AS views,
                COUNT(DISTINCT visitor_id) AS visitors
         FROM page_views
-        WHERE created_at >= datetime('now', '-7 days', 'localtime')
+        WHERE created_at >= datetime('now', '-7 days', '+8 hours')
         GROUP BY date(created_at)
         ORDER BY day DESC
     """).fetchall()
