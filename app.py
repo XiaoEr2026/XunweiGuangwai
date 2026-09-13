@@ -5,6 +5,7 @@ import sqlite3
 import time
 import secrets
 from werkzeug.security import generate_password_hash, check_password_hash
+import openpyxl
 
 # 设置时区为北京时间（PythonAnywhere 服务器默认是 UTC）
 # os.environ['TZ'] = 'Asia/Shanghai'
@@ -1787,6 +1788,197 @@ def admin_dishes_bulk():
         report=report,
     )
 
+@app.route("/admin/dishes/excel", methods=["GET", "POST"])
+def admin_dishes_excel():
+    """从 Excel 导入菜品（半自动：解析 → 编辑 → 入库）"""
+    if not is_admin():
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    all_stalls = conn.execute("""
+        SELECT s.id, s.name, c.name AS canteen_name
+        FROM stalls s
+        JOIN canteens c ON c.id = s.canteen_id
+        ORDER BY c.sort_order, c.id, s.sort_order, s.id
+    """).fetchall()
+    conn.close()
+
+    parsed_text = ""
+    error = None
+    report = None
+
+    if request.method == "POST":
+        # 情况 A：上传了 Excel 文件
+        file = request.files.get("excel")
+        if file and file.filename:
+            if not file.filename.lower().endswith((".xlsx", ".xlsm")):
+                error = "只支持 .xlsx 文件（Excel 2007 及以上）"
+            else:
+                try:
+                    wb = openpyxl.load_workbook(file, data_only=True)
+                    lines = []
+                    for sheet_name in wb.sheetnames:
+                        ws = wb[sheet_name]
+                        for row in ws.iter_rows(values_only=True):
+                            for cell in row:
+                                if cell is None:
+                                    continue
+                                s = str(cell).strip()
+                                if s:
+                                    # 单元格内可能有换行，按行拆
+                                    for part in s.splitlines():
+                                        part = part.strip()
+                                        if part:
+                                            lines.append(part)
+                    parsed_text = "\n".join(lines)
+                except Exception as e:
+                    error = f"读取 Excel 失败：{e}"
+
+        # 情况 B：用户编辑完文本框，提交入库
+        else:
+            bulk_text = request.form.get("bulk_text", "")
+            stall_id  = request.form.get("stall_id", "")
+            meal      = request.form.get("meal", "lunch")
+
+            if not stall_id.isdigit():
+                error = "请选择入库窗口"
+            elif meal not in MEALS:
+                error = "餐次不合法"
+            else:
+                conn = get_db()
+                exists = conn.execute(
+                    "SELECT id FROM stalls WHERE id = ?", (int(stall_id),)
+                ).fetchone()
+                if not exists:
+                    error = "窗口不存在"
+                else:
+                    lines = bulk_text.splitlines()
+                    ok_names = []
+                    skip_lines = []
+
+                    for line in lines:
+                        name = line.strip()
+                        if not name:
+                            continue
+                        # 跳过明显的"说明行"（纯符号 / 太短 / 含"学生选"）
+                        if len(name) <= 2:
+                            skip_lines.append(name)
+                            continue
+                        if "学生选" in name or "元/" in name or "（" in name:
+                            skip_lines.append(name)
+                            continue
+
+                        conn.execute(
+                            "INSERT INTO dishes (stall_id, name, price, description, meal) "
+                            "VALUES (?, ?, ?, ?, ?)",
+                            (int(stall_id), name, 0, "", meal),
+                        )
+                        ok_names.append(name)
+
+                    conn.commit()
+                    conn.close()
+
+                    report = {
+                        "ok_count":   len(ok_names),
+                        "ok_names":   ok_names,
+                        "skip_count": len(skip_lines),
+                        "skip_lines": skip_lines,
+                    }
+                    parsed_text = bulk_text  # 保留以便再次编辑
+
+    return render_template(
+        "admin_dishes_excel.html",
+        all_stalls=all_stalls,
+        meals=MEALS,
+        meal_label=MEAL_LABEL,
+        parsed_text=parsed_text,
+        error=error,
+        report=report,
+    )
+
+@app.route("/admin/dishes/batch", methods=["GET", "POST"])
+def admin_dishes_batch():
+    """批量删除菜品"""
+    if not is_admin():
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    all_stalls = conn.execute("""
+        SELECT s.id, s.name, c.name AS canteen_name
+        FROM stalls s
+        JOIN canteens c ON c.id = s.canteen_id
+        ORDER BY c.sort_order, c.id, s.sort_order, s.id
+    """).fetchall()
+
+    # 处理删除
+    if request.method == "POST":
+        ids = request.form.getlist("dish_ids")
+        deleted = 0
+        for did in ids:
+            if not did.isdigit():
+                continue
+            did = int(did)
+
+            # 删图片文件
+            row = conn.execute(
+                "SELECT image FROM dishes WHERE id = ?", (did,)
+            ).fetchone()
+            if row and row["image"]:
+                p = os.path.join(DISH_IMAGE_DIR, row["image"])
+                if os.path.exists(p):
+                    os.remove(p)
+
+            # 删评价点赞
+            review_ids = [r["id"] for r in conn.execute(
+                "SELECT id FROM reviews WHERE dish_id = ?", (did,)
+            ).fetchall()]
+            for rid in review_ids:
+                conn.execute("DELETE FROM review_likes WHERE review_id = ?", (rid,))
+
+            # 删关联数据
+            conn.execute("DELETE FROM reviews WHERE dish_id = ?", (did,))
+            conn.execute("DELETE FROM favorites WHERE dish_id = ?", (did,))
+            conn.execute("DELETE FROM dishes WHERE id = ?", (did,))
+            deleted += 1
+
+        conn.commit()
+        conn.close()
+        flash(f"✓ 已删除 {deleted} 道菜", "success")
+        return redirect(url_for("admin_dishes_batch"))
+
+    # GET：显示列表
+    stall_id = request.args.get("stall_id", "")
+    if stall_id.isdigit():
+        dishes = conn.execute("""
+            SELECT d.id, d.name, d.price, d.meal,
+                   s.name AS stall_name,
+                   c.name AS canteen_name
+            FROM dishes d
+            JOIN stalls s   ON s.id = d.stall_id
+            JOIN canteens c ON c.id = s.canteen_id
+            WHERE d.stall_id = ?
+            ORDER BY d.id DESC
+        """, (int(stall_id),)).fetchall()
+    else:
+        dishes = conn.execute("""
+            SELECT d.id, d.name, d.price, d.meal,
+                   s.name AS stall_name,
+                   c.name AS canteen_name
+            FROM dishes d
+            JOIN stalls s   ON s.id = d.stall_id
+            JOIN canteens c ON c.id = s.canteen_id
+            ORDER BY d.id DESC
+            LIMIT 500
+        """).fetchall()
+    conn.close()
+
+    return render_template(
+        "admin_dishes_batch.html",
+        dishes=dishes,
+        all_stalls=all_stalls,
+        current_stall=stall_id,
+        meal_label=MEAL_LABEL,
+    )
 
 # ============================================================
 # 反馈（含 IP 记录、限流、去重、黑名单检查）

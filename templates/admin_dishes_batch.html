@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>批量删除菜品 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .batch-toolbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 16px 0;
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border);
+    }
+    .batch-toolbar select {
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 14px;
+      background: var(--bg-subtle);
+    }
+    .batch-btn {
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 13px;
+      color: #fff;
+    }
+    .batch-btn-check { background: #1971c2; }
+    .batch-btn-del { background: #c92a2a; }
+    .batch-btn-del:hover { background: #a61e1e; }
+
+    .dish-check-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border);
+    }
+    .dish-check-table th,
+    .dish-check-table td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .dish-check-table th {
+      background: var(--bg-subtle);
+      font-weight: 600;
+    }
+    .dish-check-table tr:hover td {
+      background: rgba(0,0,0,.015);
+    }
+    .dish-check-table input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    .dish-check-table .meal-tag {
+      background: #fff4e6;
+      color: #d9480f;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/admin/dishes">← 返回菜品管理</a>
+
+    <h1 class="detail-title">🗑 批量删除菜品</h1>
+    <p class="detail-meta">
+      当前显示 {{ dishes|length }} 道菜。勾选要删的，点底部"删除选中"。
+      <strong style="color: var(--color-danger);">删除不可恢复！</strong>
+    </p>
+
+    <form method="get" class="batch-toolbar">
+      <label>按窗口筛选：</label>
+      <select name="stall_id" onchange="this.form.submit()">
+        <option value="">— 全部窗口 —</option>
+        {% for s in all_stalls %}
+          <option value="{{ s.id }}"
+                  {% if current_stall == s.id|string %}selected{% endif %}>
+            {{ s.canteen_name }} · {{ s.name }}
+          </option>
+        {% endfor %}
+      </select>
+      {% if current_stall %}
+        <a href="/admin/dishes/batch" class="batch-btn" style="background: #868e96; text-decoration: none;">清除筛选</a>
+      {% endif %}
+    </form>
+
+    {% if dishes %}
+      <form method="post" id="batch-form"
+            onsubmit="return confirmDelete();">
+        <table class="dish-check-table">
+          <thead>
+            <tr>
+              <th style="width: 40px;">
+                <input type="checkbox" id="check-all" onclick="toggleAll(this)">
+              </th>
+              <th>ID</th>
+              <th>菜名</th>
+              <th>窗口</th>
+              <th>餐次</th>
+              <th>价格</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in dishes %}
+              <tr>
+                <td>
+                  <input type="checkbox" name="dish_ids" value="{{ d.id }}">
+                </td>
+                <td>{{ d.id }}</td>
+                <td><strong>{{ d.name }}</strong></td>
+                <td>{{ d.canteen_name }} · {{ d.stall_name }}</td>
+                <td><span class="meal-tag">{{ meal_label[d.meal] }}</span></td>
+                <td>￥{{ d.price }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div style="margin-top: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <button type="submit" class="btn" style="background: #c92a2a;">删除选中</button>
+          <span style="color: var(--text-secondary); font-size: 13.5px;">
+            已选：<span id="sel-count">0</span> 道
+          </span>
+        </div>
+      </form>
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-emoji">📋</span>
+        <p>没有菜品。</p>
+      </div>
+    {% endif %}
+
+  </div>
+
+  <script>
+    function toggleAll(el) {
+      var boxes = document.querySelectorAll('input[name="dish_ids"]');
+      boxes.forEach(function (b) { b.checked = el.checked; });
+      updateCount();
+    }
+
+    function updateCount() {
+      var boxes = document.querySelectorAll('input[name="dish_ids"]:checked');
+      var el = document.getElementById('sel-count');
+      if (el) el.innerText = boxes.length;
+    }
+
+    document.addEventListener('change', function (e) {
+      if (e.target.name === 'dish_ids') updateCount();
+    });
+
+    function confirmDelete() {
+      var boxes = document.querySelectorAll('input[name="dish_ids"]:checked');
+      if (boxes.length === 0) {
+        alert('没有勾选任何菜品');
+        return false;
+      }
+      return confirm('确定删除这 ' + boxes.length + ' 道菜？\\n它们的所有评价、收藏、点赞也会一起删除，此操作不可恢复！');
+    }
+  </script>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

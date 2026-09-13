@@ -19,8 +19,10 @@
         <h1 class="site-title">菜品管理</h1>
         <p class="site-subtitle">共 {{ dishes|length }} 道菜</p>
       </div>
-      <div style="display: flex; gap: 8px; margin-top: 24px;">
-        <a href="/admin/dishes/bulk" class="btn" style="background: #1971c2;">批量导入</a>
+      <div style="display: flex; gap: 8px; margin-top: 24px; flex-wrap: wrap;">
+        <a href="/admin/dishes/bulk" class="btn" style="background: #1971c2;">📥 批量导入</a>
+        <a href="/admin/dishes/excel" class="btn" style="background: #2b8a3e;">📊 Excel 导入</a>
+        <a href="/admin/dishes/batch" class="btn" style="background: #c92a2a;">🗑 批量删除</a>
         <a href="/dish/new" class="btn">+ 添加菜品</a>
       </div>
     </div>
