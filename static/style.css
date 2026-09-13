@@ -2736,3 +2736,23 @@ a.board-card:hover {
 .random-modal-card {
   max-height: 85vh;
 }
+
+/* ============================================================
+   导航栏：用户名
+   ============================================================ */
+
+.nav-user {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  margin: 0 4px;
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

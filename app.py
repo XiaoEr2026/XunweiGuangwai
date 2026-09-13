@@ -1,9 +1,10 @@
 # app.py —— 寻味广外 主程序
 import os
+import re
 import sqlite3
 import time
 import secrets
-import re
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # 设置时区为北京时间（PythonAnywhere 服务器默认是 UTC）
 # os.environ['TZ'] = 'Asia/Shanghai'
@@ -100,6 +101,22 @@ def is_ip_banned(ip):
     ).fetchone()
     conn.close()
     return row is not None
+
+def current_user():
+    """返回当前登录的学生对象，未登录返回 None"""
+    uid = session.get("user_id")
+    if not uid:
+        return None
+    conn = get_db()
+    user = conn.execute(
+        "SELECT * FROM users WHERE id = ?", (uid,)
+    ).fetchone()
+    conn.close()
+    return user
+
+
+def is_logged_in():
+    return current_user() is not None
 
 def parse_menu_line(line):
     """把 OCR 的一行文字拆成一个或多个 (菜名, 价格)。
@@ -199,6 +216,54 @@ def record_visit():
         # 记录失败不能影响正常访问
         pass
 
+@app.before_request
+def require_student_login():
+    """学生端所有页面都要求登录。管理员登录状态可以直接看。"""
+    path = request.path
+
+    # 1) 静态文件、favicon 放行
+    if path.startswith("/static/") or path == "/favicon.ico":
+        return
+
+    # 2) 登录/注册/登出/关于 放行
+    allowed = (
+        "/login",      # 管理员登录
+        "/logout",     # 管理员登出
+        "/signin",     # 学生登录
+        "/signout",    # 学生登出
+        "/register",   # 学生注册
+        "/about",      # 关于页
+    )
+    for p in allowed:
+        if path == p or path.startswith(p + "/") or path.startswith(p + "?"):
+            return
+
+    # 3) 管理员路径放行（它们有 is_admin() 自己控制权限）
+    admin_prefixes = (
+        "/admin",
+        "/menu_upload",
+        "/menu_photos",
+        "/feedback/list",
+        "/dish/new",
+    )
+    for p in admin_prefixes:
+        if path.startswith(p):
+            return
+    if path.startswith("/dish/") and path.endswith("/edit"):
+        return
+    if path.startswith("/dish/") and path.endswith("/delete"):
+        return
+    if path.startswith("/feedback/") and (path.endswith("/done") or path.endswith("/delete")):
+        return
+
+    # 4) 已经登录的学生 OR 管理员 → 放行
+    if session.get("user_id"):
+        return
+    if is_admin():
+        return
+
+    # 5) 其他情况：跳登录页，登录后回到原页
+    return redirect(url_for("signin", next=path))
 
 @app.after_request
 def set_visitor_cookie(response):
@@ -263,6 +328,8 @@ def inject_globals():
         "mood_labels":           MOOD_LABELS,
         "pending_feedback":      pending_feedback,
         "unread_announcements":  unread_announcements,
+        "current_user":          current_user(),
+        "is_logged_in":          is_logged_in(),
     }
 
 
@@ -715,6 +782,99 @@ def login():
         else:
             error = "密码不对"
     return render_template("login.html", error=error)
+
+# ============================================================
+# 学生账号系统
+# ============================================================
+
+EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if is_logged_in():
+        return redirect(url_for("home"))
+
+    error = None
+
+    if request.method == "POST":
+        email    = request.form.get("email", "").strip().lower()
+        nickname = request.form.get("nickname", "").strip()
+        password = request.form.get("password", "")
+        password2 = request.form.get("password2", "")
+
+        if not email or not nickname or not password:
+            error = "所有字段都要填"
+        elif not EMAIL_RE.match(email):
+            error = "邮箱格式不对"
+        elif len(nickname) > 20:
+            error = "昵称不能超过 20 字"
+        elif len(password) < 6:
+            error = "密码至少 6 位"
+        elif password != password2:
+            error = "两次密码不一致"
+        else:
+            conn = get_db()
+            exists = conn.execute(
+                "SELECT id FROM users WHERE email = ?", (email,)
+            ).fetchone()
+            if exists:
+                error = "这个邮箱已经注册过了"
+                conn.close()
+            else:
+                conn.execute(
+                    "INSERT INTO users (email, password_hash, nickname) "
+                    "VALUES (?, ?, ?)",
+                    (email, generate_password_hash(password), nickname)
+                )
+                conn.commit()
+                conn.close()
+                flash("注册成功，请登录", "success")
+                return redirect(url_for("signin"))
+
+    return render_template("register.html", error=error)
+
+
+@app.route("/signin", methods=["GET", "POST"])
+def signin():
+    if is_logged_in():
+        return redirect(url_for("home"))
+
+    error = None
+    next_url = request.args.get("next", "")
+
+    if request.method == "POST":
+        email    = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        if not email or not password:
+            error = "邮箱和密码都要填"
+        else:
+            conn = get_db()
+            user = conn.execute(
+                "SELECT * FROM users WHERE email = ?", (email,)
+            ).fetchone()
+            conn.close()
+
+            if not user or not check_password_hash(user["password_hash"], password):
+                error = "邮箱或密码不对"
+            elif user["is_banned"]:
+                error = "你的账号已被禁言，如有疑问请联系管理员"
+            else:
+                session["user_id"] = user["id"]
+                flash(f"欢迎回来，{user['nickname']}", "success")
+                if next_url and next_url.startswith("/") and not next_url.startswith("//"):
+                    return redirect(next_url)
+                return redirect(url_for("home"))
+
+    return render_template("signin.html", error=error, next_url=next_url)
+
+
+@app.route("/signout")
+def signout():
+    session.pop("user_id", None)
+    flash("已退出登录", "success")
+    return redirect(url_for("home"))
 
 
 @app.route("/logout")
@@ -2208,5 +2368,5 @@ def admin_stats():
 
 
 if __name__ == "__main__":
-    # app.run(debug=True, host="0.0.0.0", port=5000)  # 部署时不需要这行
-    pass
+    app.run(debug=True, host="0.0.0.0", port=5000)  # 部署时不需要这行
+    # pass
