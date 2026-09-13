@@ -2,8 +2,17 @@
    _nav.html —— 全站通用顶部导航（含主题切换 + 收藏功能）
    ============================================================ #}
 
-{# 主题初始化：必须尽早执行，避免页面闪一下再变暗 #}
 <script>
+  // favicon（用 emoji 当图标，避免改所有模板）
+  (function () {
+    if (document.querySelector('link[rel="icon"]')) return;
+    var link = document.createElement('link');
+    link.rel = 'icon';
+    link.href = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍜</text></svg>";
+    document.head.appendChild(link);
+  })();
+
+  // 主题初始化：尽早执行，避免页面闪一下再变暗
   (function () {
     try {
       var saved = localStorage.getItem('theme');
