@@ -120,15 +120,13 @@ def is_logged_in():
     return current_user() is not None
 
 def current_author_name():
-    """获取当前操作者的显示名（评论、拼饭用）。
-       管理员 → "管理员"；学生 → 昵称；都没登 → "匿名"
+    """评论/拼饭显示的名字。
+       只认学生账号登录（user_id）。管理员后台登录（无 user_id）不能发言。
     """
-    if is_admin():
-        return "管理员"
     u = current_user()
     if u:
         return u["nickname"]
-    return "匿名"
+    return None
 
 def parse_menu_line(line):
     """把 OCR 的一行文字拆成一个或多个 (菜名, 价格)。
@@ -779,7 +777,12 @@ def dish_detail(dish_id):
             flash("你的 IP 已被禁止发言，无法提交评价。", "error")
             return redirect(url_for("dish_detail", dish_id=dish_id))
 
-        author  = current_author_name()          # ← 改成这个
+        author  = current_author_name()
+        if not author:
+            conn.close()
+            flash("请先用学生账号登录后再发言", "error")
+            return redirect(url_for("signin", next=url_for("dish_detail", dish_id=dish_id)))
+
         rating  = request.form.get("rating", "0")
         content = request.form.get("content", "").strip()
 
@@ -1127,7 +1130,12 @@ def board_new():
             flash("你的 IP 已被禁止发言，无法发帖。", "error")
             return redirect(url_for("board"))
 
-        author    = current_author_name()        # ← 改成这个
+        author    = current_author_name()
+        if not author:
+            conn.close()
+            flash("请先用学生账号登录后再发帖", "error")
+            return redirect(url_for("signin", next=url_for("board_new")))
+
         content   = request.form.get("content", "").strip()
         when_time = request.form.get("when_time", "").strip()
         contact   = request.form.get("contact", "").strip()
@@ -1211,7 +1219,12 @@ def board_detail(post_id):
             flash("你的 IP 已被禁止发言，无法回复。", "error")
             return redirect(url_for("board_detail", post_id=post_id))
 
-        author  = current_author_name()          # ← 改成这个
+        author  = current_author_name()
+        if not author:
+            conn.close()
+            flash("请先用学生账号登录后再回复", "error")
+            return redirect(url_for("signin", next=url_for("board_detail", post_id=post_id)))
+
         content = request.form.get("content", "").strip()
 
         if author and content and len(content) <= 300:
