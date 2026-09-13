@@ -82,6 +82,9 @@
         <div class="review">
           <p>
             <span class="review-author">{{ r.author }}</span>
+            {% if r.visitor_id == "admin" %}
+              <span class="admin-tag">👑 管理员</span>
+            {% endif %}
             <span class="review-rating">★ {{ r.rating }} / 5</span>
             {% if r.visitor_id and r.visitor_id == my_visitor_id %}
               <span class="my-tag">我发的</span>

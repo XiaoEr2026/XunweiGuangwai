@@ -18,6 +18,9 @@
     <article class="board-main">
       <div class="board-main-head">
         <span class="board-author board-author-big">{{ post.author }}</span>
+        {% if post.visitor_id == "admin" %}
+          <span class="admin-tag">👑 管理员</span>
+        {% endif %}
         {% if post.visitor_id == my_visitor_id %}
           <span class="my-tag">我发的</span>
         {% endif %}
@@ -70,6 +73,9 @@
         <div class="board-reply">
           <div class="board-reply-head">
             <span class="board-author">{{ r.author }}</span>
+            {% if r.visitor_id == "admin" %}
+              <span class="admin-tag">👑 管理员</span>
+            {% endif %}
             {% if r.visitor_id == my_visitor_id %}
               <span class="my-tag">我发的</span>
             {% endif %}

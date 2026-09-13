@@ -176,6 +176,18 @@ def parse_menu_line(line):
 
 @app.before_request
 def ensure_visitor_id():
+    # 优先级 1：学生已登录 → 用 user_id
+    uid = session.get("user_id")
+    if uid:
+        g.visitor_id = f"u{uid}"
+        return
+
+    # 优先级 2：管理员已登录 → 用特殊标记 "admin"
+    if session.get("is_admin") is True:
+        g.visitor_id = "admin"
+        return
+
+    # 兜底：用 cookie（强制登录后基本走不到这里）
     vid = request.cookies.get("visitor_id")
     if not vid or len(vid) < 8:
         vid = secrets.token_urlsafe(16)
@@ -259,11 +271,37 @@ def require_student_login():
     # 4) 已经登录的学生 OR 管理员 → 放行
     if session.get("user_id"):
         return
+
     if is_admin():
         return
 
     # 5) 其他情况：跳登录页，登录后回到原页
     return redirect(url_for("signin", next=path))
+
+@app.before_request
+def block_banned_from_posting():
+    """被禁言的用户能看，但不能发任何内容（所有 POST 请求都拦）"""
+    if request.method != "POST":
+        return
+
+    # 管理员不受影响
+    if is_admin():
+        return
+
+    uid = session.get("user_id")
+    if not uid:
+        return
+
+    conn = get_db()
+    u = conn.execute(
+        "SELECT is_banned FROM users WHERE id = ?", (uid,)
+    ).fetchone()
+    conn.close()
+
+    if u and u["is_banned"]:
+        flash("你的账号已被禁言，暂时不能发言或互动", "error")
+        ref = request.referrer or "/"
+        return redirect(ref)
 
 @app.after_request
 def set_visitor_cookie(response):
@@ -858,11 +896,12 @@ def signin():
 
             if not user or not check_password_hash(user["password_hash"], password):
                 error = "邮箱或密码不对"
-            elif user["is_banned"]:
-                error = "你的账号已被禁言，如有疑问请联系管理员"
             else:
                 session["user_id"] = user["id"]
-                flash(f"欢迎回来，{user['nickname']}", "success")
+                if user["is_banned"]:
+                    flash(f"欢迎回来，{user['nickname']}。你的账号目前被禁言，不能发言。", "error")
+                else:
+                    flash(f"欢迎回来，{user['nickname']}", "success")
                 if next_url and next_url.startswith("/") and not next_url.startswith("//"):
                     return redirect(next_url)
                 return redirect(url_for("home"))
@@ -2260,6 +2299,94 @@ def menu_photos_ocr_save(pid):
     return redirect(url_for("admin_dishes"))
 
 # ============================================================
+# 后台：用户管理
+# ============================================================
+
+@app.route("/admin/users")
+def admin_users():
+    if not is_admin():
+        return redirect(url_for("login"))
+
+    conn = get_db()
+
+    users = conn.execute("""
+        SELECT u.id, u.email, u.nickname, u.is_banned, u.created_at,
+               (SELECT COUNT(*) FROM reviews r
+                WHERE r.visitor_id = 'u' || u.id) AS review_count,
+               (SELECT COUNT(*) FROM posts p
+                WHERE p.visitor_id = 'u' || u.id) AS post_count,
+               (SELECT COUNT(*) FROM feedback f
+                WHERE f.contact = u.email) AS feedback_count
+        FROM users u
+        ORDER BY u.id DESC
+        LIMIT 500
+    """).fetchall()
+    conn.close()
+
+    return render_template("admin_users.html", users=users)
+
+
+@app.route("/admin/users/<int:uid>/toggle-ban", methods=["POST"])
+def admin_users_toggle_ban(uid):
+    if not is_admin():
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    user = conn.execute(
+        "SELECT is_banned FROM users WHERE id = ?", (uid,)
+    ).fetchone()
+    if user:
+        new_val = 0 if user["is_banned"] else 1
+        conn.execute(
+            "UPDATE users SET is_banned = ? WHERE id = ?",
+            (new_val, uid)
+        )
+        conn.commit()
+        flash(f"用户已{'禁言' if new_val else '解除禁言'}", "success")
+    conn.close()
+    return redirect(url_for("admin_users"))
+
+
+@app.route("/admin/users/<int:uid>/delete", methods=["POST"])
+def admin_users_delete(uid):
+    if not is_admin():
+        return redirect(url_for("login"))
+
+    conn = get_db()
+
+    # 用 visitor_id = "u5" 这种格式找到这个用户发过的内容
+    vid = f"u{uid}"
+
+    # 删他的评价 + 点赞
+    review_ids = [r["id"] for r in conn.execute(
+        "SELECT id FROM reviews WHERE visitor_id = ?", (vid,)
+    ).fetchall()]
+    for rid in review_ids:
+        conn.execute("DELETE FROM review_likes WHERE review_id = ?", (rid,))
+    conn.execute("DELETE FROM reviews WHERE visitor_id = ?", (vid,))
+
+    # 删他的拼饭 + 回复
+    post_ids = [p["id"] for p in conn.execute(
+        "SELECT id FROM posts WHERE visitor_id = ?", (vid,)
+    ).fetchall()]
+    for pid in post_ids:
+        conn.execute("DELETE FROM post_replies WHERE post_id = ?", (pid,))
+    conn.execute("DELETE FROM posts WHERE visitor_id = ?", (vid,))
+    conn.execute("DELETE FROM post_replies WHERE visitor_id = ?", (vid,))
+
+    # 删收藏 + 评价点赞
+    conn.execute("DELETE FROM favorites WHERE visitor_id = ?", (vid,))
+    conn.execute("DELETE FROM review_likes WHERE visitor_id = ?", (vid,))
+
+    # 删账号
+    conn.execute("DELETE FROM users WHERE id = ?", (uid,))
+    conn.commit()
+    conn.close()
+
+    flash("用户及其所有内容已删除", "success")
+    return redirect(url_for("admin_users"))
+
+# ============================================================
 # 数据统计
 # ============================================================
 
@@ -2369,4 +2496,4 @@ def admin_stats():
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)  # 部署时不需要这行
-    # pass
+    pass

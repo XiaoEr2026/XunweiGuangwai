@@ -27,6 +27,9 @@
              href="/board/{{ p.id }}">
             <div class="board-head">
               <span class="board-author">{{ p.author }}</span>
+              {% if p.visitor_id == "admin" %}
+                <span class="admin-tag">👑 管理员</span>
+              {% endif %}
               {% if p.visitor_id == my_visitor_id %}
                 <span class="my-tag">我发的</span>
               {% endif %}
