@@ -2829,3 +2829,27 @@ a.board-card:hover {
   letter-spacing: 0.02em;
   vertical-align: middle;
 }
+
+/* ============================================================
+   后台按钮颜色
+   ============================================================ */
+
+.btn-grey {
+  background: #868e96;
+  color: #fff;
+}
+
+.btn-purple {
+  background: #7048e8;
+  color: #fff;
+}
+
+.btn-green {
+  background: #2b8a3e;
+  color: #fff;
+}
+
+.btn-orange {
+  background: #f59f00;
+  color: #fff;
+}

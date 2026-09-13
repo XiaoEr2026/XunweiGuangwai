@@ -42,8 +42,18 @@
                 {% else %}
                   <span class="status-tag" style="background: #d3f9d8; color: #2b8a3e;">正常</span>
                 {% endif %}
+                {% if u.is_staff %}
+                  <span class="status-tag" style="background: #fff4e6; color: #d9480f; margin-left: 4px;">👑 管理员</span>
+                {% endif %}
               </td>
               <td style="white-space: nowrap;">
+                <form method="post" action="/admin/users/{{ u.id }}/toggle-staff"
+                      style="display: inline;">
+                  <button type="submit"
+                          class="btn-sm {% if u.is_staff %}btn-grey{% else %}btn-purple{% endif %}">
+                    {% if u.is_staff %}取消管理员{% else %}设为管理员{% endif %}
+                  </button>
+                </form>
                 <form method="post" action="/admin/users/{{ u.id }}/toggle-ban"
                       style="display: inline;">
                   <button type="submit"

@@ -176,18 +176,27 @@ def parse_menu_line(line):
 
 @app.before_request
 def ensure_visitor_id():
-    # 优先级 1：学生已登录 → 用 user_id
-    uid = session.get("user_id")
-    if uid:
-        g.visitor_id = f"u{uid}"
-        return
-
-    # 优先级 2：管理员已登录 → 用特殊标记 "admin"
+    # 优先级 1：后台管理员已登录 → "admin"
     if session.get("is_admin") is True:
         g.visitor_id = "admin"
         return
 
-    # 兜底：用 cookie（强制登录后基本走不到这里）
+    # 优先级 2：学生已登录 → 检查是不是 staff
+    uid = session.get("user_id")
+    if uid:
+        conn = get_db()
+        u = conn.execute(
+            "SELECT is_staff FROM users WHERE id = ?", (uid,)
+        ).fetchone()
+        conn.close()
+
+        if u and u["is_staff"]:
+            g.visitor_id = "admin"
+        else:
+            g.visitor_id = f"u{uid}"
+        return
+
+    # 兜底：cookie
     vid = request.cookies.get("visitor_id")
     if not vid or len(vid) < 8:
         vid = secrets.token_urlsafe(16)
@@ -2310,7 +2319,7 @@ def admin_users():
     conn = get_db()
 
     users = conn.execute("""
-        SELECT u.id, u.email, u.nickname, u.is_banned, u.created_at,
+        SELECT u.id, u.email, u.nickname, u.is_banned, u.is_staff, u.created_at,
                (SELECT COUNT(*) FROM reviews r
                 WHERE r.visitor_id = 'u' || u.id) AS review_count,
                (SELECT COUNT(*) FROM posts p
@@ -2346,6 +2355,25 @@ def admin_users_toggle_ban(uid):
     conn.close()
     return redirect(url_for("admin_users"))
 
+@app.route("/admin/users/<int:uid>/toggle-staff", methods=["POST"])
+def admin_users_toggle_staff(uid):
+    if not is_admin():
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    user = conn.execute(
+        "SELECT is_staff FROM users WHERE id = ?", (uid,)
+    ).fetchone()
+    if user:
+        new_val = 0 if user["is_staff"] else 1
+        conn.execute(
+            "UPDATE users SET is_staff = ? WHERE id = ?",
+            (new_val, uid)
+        )
+        conn.commit()
+        flash(f"已{'设为管理员' if new_val else '取消管理员'}", "success")
+    conn.close()
+    return redirect(url_for("admin_users"))
 
 @app.route("/admin/users/<int:uid>/delete", methods=["POST"])
 def admin_users_delete(uid):
