@@ -119,6 +119,17 @@ def current_user():
 def is_logged_in():
     return current_user() is not None
 
+def current_author_name():
+    """获取当前操作者的显示名（评论、拼饭用）。
+       管理员 → "管理员"；学生 → 昵称；都没登 → "匿名"
+    """
+    if is_admin():
+        return "管理员"
+    u = current_user()
+    if u:
+        return u["nickname"]
+    return "匿名"
+
 def parse_menu_line(line):
     """把 OCR 的一行文字拆成一个或多个 (菜名, 价格)。
        返回列表。两栏菜单可能一行有两道菜。
@@ -768,7 +779,7 @@ def dish_detail(dish_id):
             flash("你的 IP 已被禁止发言，无法提交评价。", "error")
             return redirect(url_for("dish_detail", dish_id=dish_id))
 
-        author  = request.form.get("author", "").strip()
+        author  = current_author_name()          # ← 改成这个
         rating  = request.form.get("rating", "0")
         content = request.form.get("content", "").strip()
 
@@ -1116,7 +1127,7 @@ def board_new():
             flash("你的 IP 已被禁止发言，无法发帖。", "error")
             return redirect(url_for("board"))
 
-        author    = request.form.get("author", "").strip()
+        author    = current_author_name()        # ← 改成这个
         content   = request.form.get("content", "").strip()
         when_time = request.form.get("when_time", "").strip()
         contact   = request.form.get("contact", "").strip()
@@ -1200,7 +1211,7 @@ def board_detail(post_id):
             flash("你的 IP 已被禁止发言，无法回复。", "error")
             return redirect(url_for("board_detail", post_id=post_id))
 
-        author  = request.form.get("author", "").strip()
+        author  = current_author_name()          # ← 改成这个
         content = request.form.get("content", "").strip()
 
         if author and content and len(content) <= 300:
