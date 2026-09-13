@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的反馈 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/feedback">← 提交新反馈</a>
+
+    <h1 class="detail-title">📨 我的反馈</h1>
+    <p class="detail-meta">你提交过的反馈（共 {{ items|length }} 条）</p>
+
+    {% if items %}
+      {% for item in items %}
+        <div class="review" style="margin-top: 14px;">
+          <p>
+            <strong>{{ categories[item.category] or item.category }}</strong>
+            {% if item.reply %}
+              <span class="status-tag" style="background: #d3f9d8; color: #2b8a3e; margin-left: 6px;">已回复</span>
+            {% else %}
+              <span class="status-tag" style="background: #fff4e6; color: #d9480f; margin-left: 6px;">待处理</span>
+            {% endif %}
+          </p>
+
+          <p style="white-space: pre-wrap; margin-top: 8px;">{{ item.content }}</p>
+
+          <p class="review-time">{{ item.created_at }}</p>
+
+          {% if item.reply %}
+            <div style="background: #f3f0ff; padding: 12px 16px; border-radius: 10px;
+                        margin-top: 10px; border-left: 3px solid #7048e8;">
+              <p style="margin: 0; font-size: 13.5px; color: #5f3dc4; font-weight: 600;">
+                👑 管理员回复
+              </p>
+              <p style="margin: 6px 0 0; font-size: 14px; white-space: pre-wrap;">{{ item.reply }}</p>
+              <p style="margin: 4px 0 0; font-size: 12px; color: var(--text-tertiary);">
+                {{ item.replied_at }}
+              </p>
+            </div>
+          {% else %}
+            <p style="font-size: 13px; color: var(--text-tertiary); margin-top: 8px;">
+              等待管理员处理…
+            </p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-emoji">📨</span>
+        <p>你还没有提交过反馈。</p>
+        <p style="margin-top: 16px;">
+          <a href="/feedback" class="btn">去提交</a>
+        </p>
+      </div>
+    {% endif %}
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

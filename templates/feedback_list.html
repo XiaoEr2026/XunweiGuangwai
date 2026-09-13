@@ -56,6 +56,19 @@
             {% endif %}
           </p>
 
+          {% if item.reply %}
+            <div style="background: #f3f0ff; padding: 10px 14px; border-radius: 8px;
+                        margin-top: 8px; border-left: 3px solid #7048e8;">
+              <p style="margin: 0; font-size: 13.5px; color: #5f3dc4; font-weight: 600;">
+                👑 管理员回复
+              </p>
+              <p style="margin: 6px 0 0; font-size: 14px; white-space: pre-wrap;">{{ item.reply }}</p>
+              <p style="margin: 4px 0 0; font-size: 12px; color: var(--text-tertiary);">
+                {{ item.replied_at }}
+              </p>
+            </div>
+          {% endif %}
+
           <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
             {% if item.status == 'new' %}
               <form method="post" action="/feedback/{{ item.id }}/done" style="display: inline;">
@@ -64,6 +77,18 @@
                 </button>
               </form>
             {% endif %}
+
+            <form method="post" action="/feedback/{{ item.id }}/reply"
+                  style="display: flex; gap: 6px; flex: 1; min-width: 300px;">
+              <input type="text" name="reply" required maxlength="500"
+                     placeholder="{% if item.reply %}已有回复，可修改{% else %}写回复…{% endif %}"
+                     value="{{ item.reply or '' }}"
+                     style="flex: 1; padding: 6px 10px; border: 1px solid var(--border);
+                            border-radius: 6px; font-size: 13px; font-family: inherit;">
+              <button type="submit" class="btn-sm" style="background: #7048e8; padding: 6px 14px; font-size: 13px;">
+                回复
+              </button>
+            </form>
 
             <form method="post" action="/feedback/{{ item.id }}/delete"
                   data-confirm='删除这条反馈？此操作不可恢复。'

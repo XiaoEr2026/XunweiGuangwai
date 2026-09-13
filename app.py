@@ -366,7 +366,23 @@ def inject_globals():
         except Exception:
             unread_announcements = 0
 
-    conn.close()
+    # 未读的管理员回复（只对学生）—— 注意放在 conn.close() 之前
+    unread_replies = 0
+    uid = session.get("user_id")
+    if uid and not is_admin():
+        try:
+            row = conn.execute("""
+                SELECT COUNT(*) AS c FROM feedback
+                WHERE user_id = ?
+                  AND reply IS NOT NULL
+                  AND reply != ''
+                  AND reply_read = 0
+            """, (uid,)).fetchone()
+            unread_replies = row["c"] if row else 0
+        except Exception:
+            unread_replies = 0
+
+    conn.close()   # ← 移到这里，所有查询都完了才关
 
     return {
         "is_admin":              is_admin(),
@@ -375,6 +391,7 @@ def inject_globals():
         "mood_labels":           MOOD_LABELS,
         "pending_feedback":      pending_feedback,
         "unread_announcements":  unread_announcements,
+        "unread_replies":        unread_replies,
         "current_user":          current_user(),
         "is_logged_in":          is_logged_in(),
     }
@@ -1827,9 +1844,11 @@ def feedback():
                             mood = m
 
                     conn.execute(
-                        "INSERT INTO feedback (category, content, contact, mood, ip) "
-                        "VALUES (?, ?, ?, ?, ?)",
-                        (category, content, contact or None, mood, ip),
+                        "INSERT INTO feedback "
+                        "(category, content, contact, mood, ip, user_id) "
+                        "VALUES (?, ?, ?, ?, ?, ?)",
+                        (category, content, contact or None, mood, ip,
+                         session.get("user_id")),
                     )
                     conn.commit()
                     submitted = True
@@ -1843,6 +1862,38 @@ def feedback():
         error=error,
     )
 
+@app.route("/my-feedback")
+def my_feedback():
+    """学生查看自己提交的反馈 + 管理员回复"""
+    uid = session.get("user_id")
+    if not uid:
+        return redirect(url_for("signin"))
+
+    conn = get_db()
+
+    # 把这个学生所有"已回复"的反馈标记为已读
+    conn.execute("""
+        UPDATE feedback
+        SET reply_read = 1
+        WHERE user_id = ?
+          AND reply IS NOT NULL
+          AND reply != ''
+          AND reply_read = 0
+    """, (uid,))
+    conn.commit()
+
+    items = conn.execute("""
+        SELECT * FROM feedback
+        WHERE user_id = ?
+        ORDER BY id DESC
+    """, (uid,)).fetchall()
+    conn.close()
+
+    return render_template(
+        "my_feedback.html",
+        items=items,
+        categories=FEEDBACK_CATEGORIES,
+    )
 
 @app.route("/feedback/list")
 def feedback_list():
@@ -1888,6 +1939,28 @@ def feedback_delete(fid):
     conn.close()
     return redirect(url_for("feedback_list"))
 
+@app.route("/feedback/<int:fid>/reply", methods=["POST"])
+def feedback_reply(fid):
+    if not is_admin():
+        return redirect(url_for("login"))
+
+    reply = request.form.get("reply", "").strip()
+    if not reply:
+        flash("回复内容不能为空", "error")
+        return redirect(url_for("feedback_list"))
+
+    conn = get_db()
+    conn.execute("""
+        UPDATE feedback
+        SET reply = ?, replied_at = datetime('now', '+8 hours'),
+            reply_read = 0
+        WHERE id = ?
+    """, (reply, fid))
+    conn.commit()
+    conn.close()
+
+    flash("已回复", "success")
+    return redirect(url_for("feedback_list"))
 
 # ============================================================
 # 后台：评论管理

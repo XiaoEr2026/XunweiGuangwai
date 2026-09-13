@@ -65,6 +65,12 @@
         <a href="/hot" class="nav-link">热门</a>
         <a href="/my-favorites" class="nav-link">收藏</a>
         <a href="/feedback" class="nav-link">反馈</a>
+        <a href="/my-feedback" class="nav-link">
+          我的反馈
+          {% if unread_replies > 0 %}
+            <span class="nav-badge">{{ unread_replies }}</span>
+          {% endif %}
+        </a>
         <a href="/about" class="nav-link">关于</a>
         <a href="/announcements" class="nav-bell" aria-label="公告">
           🔔
