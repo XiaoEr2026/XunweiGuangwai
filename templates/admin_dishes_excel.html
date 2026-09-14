@@ -6,62 +6,72 @@
   <title>Excel 导入菜品 - 寻味广外</title>
   <link rel="stylesheet" href="/static/style.css">
   <style>
-    .excel-textarea {
+    .bulk-textarea {
       width: 100%;
-      min-height: 400px;
-      font-family: Consolas, Monaco, monospace;
-      font-size: 14px;
+      min-height: 320px;
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 13.5px;
       padding: 12px;
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
-      line-height: 1.8;
+      line-height: 1.7;
       box-sizing: border-box;
       background: var(--bg-subtle);
       color: var(--text-primary);
       resize: vertical;
+      white-space: pre;
+      overflow-x: auto;
     }
-    .excel-textarea:focus {
+    .bulk-textarea:focus {
       outline: none;
       background: var(--bg-card);
       border-color: var(--color-primary);
       box-shadow: 0 0 0 4px rgba(255,122,69,.12);
     }
-    .hint-box {
+    .steps-box {
       background: var(--bg-subtle);
-      padding: 14px 18px;
+      padding: 16px 20px;
       border-radius: var(--radius-md);
       font-size: 13.5px;
+      line-height: 2;
       color: var(--text-primary);
-      line-height: 1.9;
-      margin-top: 12px;
+      margin-bottom: 16px;
     }
-    .report-box-ok {
-      border-left: 4px solid var(--color-success);
-      background: var(--bg-card);
-      padding: 14px 18px;
-      border-radius: var(--radius-md);
-      margin-top: 14px;
+    .steps-box strong { color: var(--color-primary-dark); }
+    .steps-box code {
+      background: #fff;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      font-family: Consolas, Monaco, monospace;
+      font-size: 12.5px;
+      color: var(--color-primary-dark);
     }
-    .report-box-warn {
-      border-left: 4px solid var(--color-warning);
-      background: var(--bg-card);
-      padding: 14px 18px;
-      border-radius: var(--radius-md);
-      margin-top: 12px;
-    }
+    .report-ok   { border-left: 4px solid var(--color-success); }
+    .report-warn { border-left: 4px solid var(--color-warning); }
     .report-list {
       list-style: none;
       padding: 0;
       margin: 10px 0 0;
       font-size: 14px;
+      max-height: 400px;
+      overflow-y: auto;
     }
     .report-list li {
-      padding: 6px 0;
+      padding: 5px 0;
       border-bottom: 1px dashed var(--border);
       line-height: 1.6;
     }
-    .report-list li:last-child {
-      border-bottom: none;
+    .report-list li:last-child { border-bottom: none; }
+    .week-tag {
+      display: inline-block;
+      background: var(--color-primary-light);
+      color: var(--color-primary-dark);
+      padding: 1px 7px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      margin-left: 6px;
+      font-weight: 600;
     }
   </style>
 </head>
@@ -73,9 +83,9 @@
 
     <a class="back-link" href="/admin/dishes">← 返回菜品管理</a>
 
-    <h1 class="detail-title">📊 Excel 导入菜品</h1>
+    <h1 class="detail-title">📊 Excel 智能导入</h1>
     <p class="detail-meta">
-      上传学校给的 Excel 菜单，服务器把所有文字读出来，你在下面文本框里编辑，然后导入。
+      从 Excel 里复制"周一~周日" 7 列菜单，粘进来，**自动识别每一天**。
     </p>
 
     {% if error %}
@@ -84,92 +94,89 @@
       </div>
     {% endif %}
 
-    {# 上传 Excel 表单 #}
-    <div class="form-card" style="margin-top: 20px;">
-      <h2 style="margin: 0 0 12px; font-size: 16px;">① 上传 Excel 文件</h2>
-      <form method="post" enctype="multipart/form-data">
+    {# ============ 操作步骤说明 ============ #}
+    <div class="steps-box">
+      <strong>📋 操作步骤：</strong><br>
+      <strong>1.</strong> 打开学校给的 Excel<br>
+      <strong>2.</strong> 找到**一个窗口**的菜单块（例如"粤式风味 · 午餐"）<br>
+      <strong>3.</strong> 选中**从"星期一"到"星期日"那 7 列**（含表头也行，会自动跳过）<br>
+      <strong>4.</strong> <code>Ctrl + C</code> 复制<br>
+      <strong>5.</strong> 粘到下面文本框<br>
+      <strong>6.</strong> 选窗口 + 餐次 → 点导入<br>
+      <br>
+      💡 每个单元格内如果有 <code>、</code> 分隔的多个菜，会自动拆成多道，各带同一个星期。
+    </div>
+
+    {# ============ 导入表单 ============ #}
+    <div class="form-card">
+      <form method="post">
+
         <p>
-          <input type="file" name="excel" accept=".xlsx,.xlsm" required>
+          <label>菜单内容（从 Excel 复制的 7 列）</label>
+          <textarea name="bulk_text" class="bulk-textarea" required
+                    placeholder="星期一&#9;星期二&#9;星期三&#9;星期四&#9;星期五&#9;星期六&#9;星期日
+梅菜马蹄蒸肉饼&#9;麻香鸡&#9;黄豆焖猪手&#9;蒜香锅包肉&#9;莲藕焖猪挣&#9;炸香芋蒸鲜骨&#9;
+酸菜五香炽花肉&#9;尖椒芹菜花生炒凤爪&#9;香辣鸡片&#9;国药金针蒸滑鸡&#9;辣豉汁蒸鱼下巴&#9;白切姜葱土鸡&#9;...">{{ bulk_text }}</textarea>
         </p>
+
         <p>
-          <button type="submit" class="btn">上传并解析</button>
+          <label>导入到哪个窗口？</label>
+          <select name="stall_id" required>
+            <option value="">— 请选择 —</option>
+            {% for s in all_stalls %}
+              <option value="{{ s.id }}">
+                {{ s.canteen_name }} · {{ s.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </p>
+
+        <p>
+          <label>餐次</label>
+          <select name="meal">
+            {% for m in meals %}
+              <option value="{{ m }}">{{ meal_label[m] }}</option>
+            {% endfor %}
+          </select>
+        </p>
+
+        <p>
+          <button type="submit" class="btn">确认导入</button>
         </p>
       </form>
     </div>
 
-    {# 编辑 + 入库表单 #}
-    {% if parsed_text %}
-      <div class="form-card" style="margin-top: 20px;">
-        <h2 style="margin: 0 0 12px; font-size: 16px;">② 编辑菜名 + 导入</h2>
-
-        <div class="hint-box">
-          <strong>编辑提示：</strong><br>
-          · 每行一个菜名（一行就是一道菜）<br>
-          · <strong>删掉不要的行</strong>（如"粥水"、"中点（学生选二）"、"汤粉面 8元/份"）<br>
-          · 含"学生选"、"元/"、"（"的行会**被自动跳过**<br>
-          · 少于 2 个字的行会**被自动跳过**
-        </div>
-
-        <form method="post" style="margin-top: 16px;">
-          <p>
-            <textarea name="bulk_text" class="excel-textarea" required>{{ parsed_text }}</textarea>
-          </p>
-
-          <p>
-            <label>导入到哪个窗口？</label>
-            <select name="stall_id" required>
-              {% for s in all_stalls %}
-                <option value="{{ s.id }}">
-                  {{ s.canteen_name }} · {{ s.name }}
-                </option>
-              {% endfor %}
-            </select>
-          </p>
-
-          <p>
-            <label>餐次</label>
-            <select name="meal">
-              {% for m in meals %}
-                <option value="{{ m }}">{{ meal_label[m] }}</option>
-              {% endfor %}
-            </select>
-          </p>
-
-          <p>
-            <button type="submit" class="btn">确认导入</button>
-          </p>
-        </form>
-      </div>
-    {% endif %}
-
-    {# 导入报告 #}
+    {# ============ 导入报告 ============ #}
     {% if report %}
       {% if report.ok_count > 0 %}
-        <div class="report-box-ok">
+        <div class="form-card report-ok" style="margin-top: 20px;">
           <p style="margin: 0; color: var(--color-success); font-size: 16px; font-weight: bold;">
             ✓ 成功导入 {{ report.ok_count }} 道菜
           </p>
           <ul class="report-list">
-            {% for name in report.ok_names %}
-              <li>· {{ name }}</li>
+            {% for item in report.ok_list %}
+              <li>
+                {{ item.name }}
+                <span class="week-tag">{{ weekday_labels[item.weekdays|int] if item.weekdays|int in weekday_labels else item.weekdays }}</span>
+              </li>
             {% endfor %}
           </ul>
         </div>
       {% endif %}
 
       {% if report.skip_count > 0 %}
-        <div class="report-box-warn">
+        <div class="form-card report-warn" style="margin-top: 12px;">
           <p style="margin: 0; color: var(--color-warning); font-size: 16px; font-weight: bold;">
-            ⚠ 跳过 {{ report.skip_count }} 行（判断为说明行）
+            ⚠ 跳过 {{ report.skip_count }} 行
           </p>
           <ul class="report-list">
-            {% for line in report.skip_lines %}
-              <li><code>{{ line }}</code></li>
+            {% for line, reason in report.skip_lines %}
+              <li>
+                <code style="font-size: 12.5px;">{{ line }}</code><br>
+                <span style="color: var(--color-danger); font-size: 13px;">{{ reason }}</span>
+              </li>
             {% endfor %}
           </ul>
-          <p style="font-size: 13px; color: var(--text-secondary); margin-top: 10px;">
-            如果这些其实是菜，回上面文本框里**改成更长的菜名**（至少 3 个字、不含"（"）后重新导入。
-          </p>
         </div>
       {% endif %}
 

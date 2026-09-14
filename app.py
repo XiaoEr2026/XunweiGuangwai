@@ -110,6 +110,76 @@ def parse_weekdays_from_form():
         return "1,2,3,4,5,6,7"
     return ",".join(str(w) for w in selected)
 
+# 表头 / 说明行：这些词出现时跳过，不入库
+HEADER_KEYWORDS = {
+    "星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日", "星期天",
+    "周一", "周二", "周三", "周四", "周五", "周六", "周日",
+    "餐次", "类别", "早餐", "午餐", "晚餐", "中午", "晚上",
+}
+
+
+def parse_week_columns(text):
+    """解析用户从 Excel 粘贴的 7 列内容。
+       每行按 Tab 拆，期望得到 7 个字段（周一到周日）。
+       每个字段内用 、 , ， 再拆成多道菜。
+       返回 (results, skipped)：
+         results = [(菜名, weekdays_str), ...]
+         skipped = [(原始行, 原因), ...]
+    """
+    results = []
+    skipped = []
+
+    for raw_line in text.splitlines():
+        line = raw_line.rstrip("\n").rstrip("\r")
+        if not line.strip():
+            continue
+
+        # 优先 Tab 拆（Excel 复制的默认分隔）
+        parts = line.split("\t")
+
+        # 如果 Tab 拆出来只有 1 段，试试 2 个以上空格
+        if len(parts) == 1:
+            parts = re.split(r"\s{2,}", line)
+
+        # 如果还是只有 1 段，跳过
+        if len(parts) < 2:
+            skipped.append((line, "无法拆分（不是 Tab 也不是多空格分隔）"))
+            continue
+
+        # 补齐 / 截断到 7 段
+        while len(parts) < 7:
+            parts.append("")
+        parts = parts[:7]
+
+        # 检查这一行是不是"表头行"（7 段全是星期词）
+        if all(p.strip() in HEADER_KEYWORDS or not p.strip() for p in parts):
+            continue
+
+        # 每段内部再拆（顿号 / 逗号）
+        for col_idx, part in enumerate(parts, start=1):
+            part = part.strip()
+            if not part:
+                continue
+
+            # 顿号 / 逗号 / 中英文逗号 拆
+            sub_dishes = re.split(r"[、,，]", part)
+            for d in sub_dishes:
+                d = d.strip()
+                if not d:
+                    continue
+                # 跳过太短的（<=1 字）和表头词
+                if len(d) < 2:
+                    continue
+                if d in HEADER_KEYWORDS:
+                    continue
+                # 跳过含括号的（如"中点（学生选二）"）
+                if "（" in d or "(" in d:
+                    continue
+
+                results.append((d, str(col_idx)))
+
+    return results, skipped
+
 def get_client_ip():
     """拿访客 IP（兼容反向代理）"""
     ip = request.headers.get("X-Forwarded-For", request.remote_addr or "")
@@ -1878,7 +1948,7 @@ def admin_dishes_bulk():
 
 @app.route("/admin/dishes/excel", methods=["GET", "POST"])
 def admin_dishes_excel():
-    """从 Excel 导入菜品（半自动：解析 → 编辑 → 入库）"""
+    """Excel 智能导入：从 Excel 粘贴 7 列，自动识别星期"""
     if not is_admin():
         return redirect(url_for("login"))
 
@@ -1891,97 +1961,61 @@ def admin_dishes_excel():
     """).fetchall()
     conn.close()
 
-    parsed_text = ""
     error = None
     report = None
+    bulk_text = ""
 
     if request.method == "POST":
-        # 情况 A：上传了 Excel 文件
-        file = request.files.get("excel")
-        if file and file.filename:
-            if not file.filename.lower().endswith((".xlsx", ".xlsm")):
-                error = "只支持 .xlsx 文件（Excel 2007 及以上）"
-            else:
-                try:
-                    wb = openpyxl.load_workbook(file, data_only=True)
-                    lines = []
-                    for sheet_name in wb.sheetnames:
-                        ws = wb[sheet_name]
-                        for row in ws.iter_rows(values_only=True):
-                            for cell in row:
-                                if cell is None:
-                                    continue
-                                s = str(cell).strip()
-                                if s:
-                                    # 单元格内可能有换行，按行拆
-                                    for part in s.splitlines():
-                                        part = part.strip()
-                                        if part:
-                                            lines.append(part)
-                    parsed_text = "\n".join(lines)
-                except Exception as e:
-                    error = f"读取 Excel 失败：{e}"
+        bulk_text = request.form.get("bulk_text", "")
+        stall_id  = request.form.get("stall_id", "")
+        meal      = request.form.get("meal", "lunch")
 
-        # 情况 B：用户编辑完文本框，提交入库
+        if not bulk_text.strip():
+            error = "请先粘贴内容"
+        elif not stall_id.isdigit():
+            error = "请选择入库窗口"
+        elif meal not in MEALS:
+            error = "餐次不合法"
         else:
-            bulk_text = request.form.get("bulk_text", "")
-            stall_id  = request.form.get("stall_id", "")
-            meal      = request.form.get("meal", "lunch")
-
-            if not stall_id.isdigit():
-                error = "请选择入库窗口"
-            elif meal not in MEALS:
-                error = "餐次不合法"
+            conn = get_db()
+            exists = conn.execute(
+                "SELECT id FROM stalls WHERE id = ?", (int(stall_id),)
+            ).fetchone()
+            if not exists:
+                error = "窗口不存在"
+                conn.close()
             else:
-                conn = get_db()
-                exists = conn.execute(
-                    "SELECT id FROM stalls WHERE id = ?", (int(stall_id),)
-                ).fetchone()
-                if not exists:
-                    error = "窗口不存在"
-                else:
-                    lines = bulk_text.splitlines()
-                    ok_names = []
-                    skip_lines = []
+                pairs, skipped = parse_week_columns(bulk_text)
 
-                    for line in lines:
-                        name = line.strip()
-                        if not name:
-                            continue
-                        # 跳过明显的"说明行"（纯符号 / 太短 / 含"学生选"）
-                        if len(name) <= 2:
-                            skip_lines.append(name)
-                            continue
-                        if "学生选" in name or "元/" in name or "（" in name:
-                            skip_lines.append(name)
-                            continue
+                ok_list = []
+                for name, weekdays in pairs:
+                    conn.execute(
+                        "INSERT INTO dishes "
+                        "(stall_id, name, price, description, meal, weekdays) "
+                        "VALUES (?, ?, ?, ?, ?, ?)",
+                        (int(stall_id), name, 0, "", meal, weekdays),
+                    )
+                    ok_list.append({"name": name, "weekdays": weekdays})
 
-                        conn.execute(
-                            "INSERT INTO dishes (stall_id, name, price, description, meal) "
-                            "VALUES (?, ?, ?, ?, ?)",
-                            (int(stall_id), name, 0, "", meal),
-                        )
-                        ok_names.append(name)
+                conn.commit()
+                conn.close()
 
-                    conn.commit()
-                    conn.close()
-
-                    report = {
-                        "ok_count":   len(ok_names),
-                        "ok_names":   ok_names,
-                        "skip_count": len(skip_lines),
-                        "skip_lines": skip_lines,
-                    }
-                    parsed_text = bulk_text  # 保留以便再次编辑
+                report = {
+                    "ok_count":   len(ok_list),
+                    "ok_list":    ok_list,
+                    "skip_count": len(skipped),
+                    "skip_lines": skipped,
+                }
 
     return render_template(
         "admin_dishes_excel.html",
         all_stalls=all_stalls,
         meals=MEALS,
         meal_label=MEAL_LABEL,
-        parsed_text=parsed_text,
+        weekday_labels=WEEKDAY_LABELS,
         error=error,
         report=report,
+        bulk_text=bulk_text,
     )
 
 @app.route("/admin/dishes/batch", methods=["GET", "POST"])
