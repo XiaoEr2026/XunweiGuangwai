@@ -49,8 +49,9 @@
     <h1 class="detail-title">{{ dish.name }}</h1>
     <p class="detail-meta">窗口：{{ dish.canteen_name }} · {{ dish.stall_name }}</p>
     {% if dish.price and dish.price > 0 %}
+    {% if dish.price and dish.price > 0 %}
       <p class="detail-meta">价格：<span class="dish-price">￥{{ dish.price }}</span></p>
-    {% endif %}
+    {% endif %}    {% endif %}
     <p class="detail-meta">
       平均分：<span class="dish-rating">★ {{ dish.avg_rating or "暂无" }} / 5</span>
       （共 {{ dish.review_count }} 条）
