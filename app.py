@@ -19,6 +19,9 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 
+from werkzeug.security import generate_password_hash, check_password_hash   # ← 新增
+import openpyxl                                                            # ← 新增
+
 app = Flask(__name__)
 app.secret_key = "change-me-to-a-random-string-07-platform"
 
