@@ -43,7 +43,9 @@
       {% if dish.canteen_name is defined %}
         <p class="dish-location">🏫 {{ dish.canteen_name }} · {{ dish.stall_name }}</p>
       {% endif %}
-      <p class="dish-price">￥{{ dish.price }}</p>
+      {% if dish.price and dish.price > 0 %}
+        <p class="dish-price">￥{{ dish.price }}</p>
+      {% endif %}
       <p class="dish-rating">
         ★ {{ dish.avg_rating or "暂无" }}
         <small>（{{ dish.review_count }} 条评价）</small>

@@ -1969,6 +1969,15 @@ def admin_dishes_excel():
         bulk_text = request.form.get("bulk_text", "")
         stall_id  = request.form.get("stall_id", "")
         meal      = request.form.get("meal", "lunch")
+        price_str = request.form.get("price", "0").strip()
+
+        # 解析价格
+        try:
+            default_price = float(price_str) if price_str else 0
+        except ValueError:
+            default_price = 0
+        if default_price < 0:
+            default_price = 0
 
         if not bulk_text.strip():
             error = "请先粘贴内容"
@@ -1993,7 +2002,7 @@ def admin_dishes_excel():
                         "INSERT INTO dishes "
                         "(stall_id, name, price, description, meal, weekdays) "
                         "VALUES (?, ?, ?, ?, ?, ?)",
-                        (int(stall_id), name, 0, "", meal, weekdays),
+                        (int(stall_id), name, default_price, "", meal, weekdays),
                     )
                     ok_list.append({"name": name, "weekdays": weekdays})
 
