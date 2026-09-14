@@ -1463,7 +1463,7 @@ body {
 
 .random-pick-wrap {
   text-align: center;
-  margin: 4px 0 28px;
+  margin: 8px 0 36px;
 }
 
 .btn-random {
@@ -2852,4 +2852,49 @@ a.board-card:hover {
 .btn-orange {
   background: #f59f00;
   color: #fff;
+}
+
+/* ============================================================
+   今天 / 明天 标签
+   ============================================================ */
+
+.day-tabs {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0 20px;
+  justify-content: center;
+}
+
+.day-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 24px;
+  border-radius: var(--radius-full);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  transition: all .2s var(--ease);
+}
+
+.day-tab:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark);
+}
+
+.day-tab.active {
+  background: var(--gradient-primary);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: var(--shadow-primary);
+}
+
+@media (max-width: 640px) {
+  .day-tab {
+    padding: 8px 18px;
+    font-size: 14px;
+  }
 }

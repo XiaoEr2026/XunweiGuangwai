@@ -35,11 +35,23 @@
                placeholder="搜索菜名、窗口、口味…"
                value="{{ q }}" autocomplete="off">
         {% if q %}
-          <a href="/" class="hero-search-clear" title="清空">✕</a>
+          <a href="/?day={{ current_day }}" class="hero-search-clear" title="清空">✕</a>
         {% endif %}
         <button type="submit" class="hero-search-btn">搜索</button>
       </form>
     </section>
+
+    {# ==================== 今天 / 明天 ==================== #}
+    <div class="day-tabs">
+      <a href="/?day=today{% if current_meal != 'all' %}&meal={{ current_meal }}{% endif %}{% if current_canteen %}&canteen={{ current_canteen }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+         class="day-tab {% if current_day == 'today' %}active{% endif %}">
+        📍 今天（{{ weekday_labels[target_weekday] if current_day == 'today' else '' }}）
+      </a>
+      <a href="/?day=tomorrow{% if current_meal != 'all' %}&meal={{ current_meal }}{% endif %}{% if current_canteen %}&canteen={{ current_canteen }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+         class="day-tab {% if current_day == 'tomorrow' %}active{% endif %}">
+        📅 明天
+      </a>
+    </div>
 
     {# ==================== 重要公告横幅 ==================== #}
     {% set important = announcements | selectattr("level", "equalto", "danger") | list %}
@@ -75,13 +87,13 @@
     <h2 class="section-title">🏫 按楼层找</h2>
 
     <div class="canteen-scroll">
-      <a href="/"
+      <a href="/?day={{ current_day }}"
          class="canteen-chip {% if not current_canteen %}active{% endif %}">
         <span class="canteen-chip-emoji">🎯</span>
         <span class="canteen-chip-name">全部楼层</span>
       </a>
       {% for c in canteens %}
-        <a href="/?canteen={{ c.id }}{% if current_meal != 'all' %}&meal={{ current_meal }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+        <a href="/?day={{ current_day }}&canteen={{ c.id }}{% if current_meal != 'all' %}&meal={{ current_meal }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
            class="canteen-chip {% if current_canteen == c.id|string %}active{% endif %}">
           <span class="canteen-chip-emoji">🏫</span>
           <span class="canteen-chip-name">{{ c.name }}</span>
@@ -95,7 +107,7 @@
       <a href="/{% if current_canteen %}?canteen={{ current_canteen }}{% endif %}{% if q %}{% if current_canteen %}&{% else %}?{% endif %}q={{ q }}{% endif %}"
          class="meal-tab {% if current_meal == 'all' %}active{% endif %}">全部</a>
       {% for m in meals %}
-        <a href="/?meal={{ m }}{% if current_canteen %}&canteen={{ current_canteen }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+        <a href="/?day={{ current_day }}&meal={{ m }}{% if current_canteen %}&canteen={{ current_canteen }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
            class="meal-tab {% if current_meal == m %}active{% endif %}">
           {{ meal_label[m] }}
         </a>
@@ -124,7 +136,7 @@
         {% if q %}
           <p>没找到「{{ q }}」相关的菜，换个词试试？</p>
           <p style="margin-top: 16px;">
-            <a href="/" class="btn">清空筛选</a>
+            <a href="/?day={{ current_day }}" class="btn">清空筛选</a>
           </p>
         {% else %}
           <p>这里还没有菜品，换个筛选条件试试？</p>

@@ -4,8 +4,7 @@ import re
 import sqlite3
 import time
 import secrets
-from werkzeug.security import generate_password_hash, check_password_hash
-import openpyxl
+from datetime import datetime, timezone, timedelta
 
 # 设置时区为北京时间（PythonAnywhere 服务器默认是 UTC）
 # os.environ['TZ'] = 'Asia/Shanghai'
@@ -87,6 +86,29 @@ def parse_badges_from_form():
         spicy = 0
     return is_new, spicy
 
+WEEKDAY_LABELS = {
+    1: "周一",
+    2: "周二",
+    3: "周三",
+    4: "周四",
+    5: "周五",
+    6: "周六",
+    7: "周日",
+}
+
+
+def parse_weekdays_from_form():
+    """从表单读 weekdays 复选框，返回排序好的字符串，如 '1,2,3'。
+       没选任何 → 返回 '1,2,3,4,5,6,7'（每天）。
+    """
+    try:
+        selected = [int(x) for x in request.form.getlist("weekdays")]
+    except (TypeError, ValueError):
+        selected = []
+    selected = sorted(set(w for w in selected if 1 <= w <= 7))
+    if not selected:
+        return "1,2,3,4,5,6,7"
+    return ",".join(str(w) for w in selected)
 
 def get_client_ip():
     """拿访客 IP（兼容反向代理）"""
@@ -118,6 +140,34 @@ def current_user():
 
 def is_logged_in():
     return current_user() is not None
+
+def get_bj_now():
+    """拿北京时间（服务器通常是 UTC）"""
+    return datetime.now(timezone.utc) + timedelta(hours=8)
+
+
+def resolve_day_param(day):
+    """决定当前应该看哪天的菜。
+       day: 'today' / 'tomorrow' / 其他
+       返回 (target_weekday, day_key)
+       target_weekday: 1~7（周一~周日）
+       day_key: 'today' 或 'tomorrow'
+    """
+    bj = get_bj_now()
+    today_weekday = bj.isoweekday()      # 1=周一 ... 7=周日
+    tomorrow_weekday = today_weekday % 7 + 1
+    hour = bj.hour
+
+    if day == "tomorrow":
+        return tomorrow_weekday, "tomorrow"
+    if day == "today":
+        return today_weekday, "today"
+
+    # 没有 day 参数：默认策略
+    # 晚上 19:00 后 → 默认看明天
+    if hour >= 19:
+        return tomorrow_weekday, "tomorrow"
+    return today_weekday, "today"
 
 def current_author_name():
     """评论/拼饭显示的名字。
@@ -402,6 +452,7 @@ def inject_globals():
         "pending_feedback":      pending_feedback,
         "unread_announcements":  unread_announcements,
         "unread_replies":        unread_replies,
+        "weekday_labels":        WEEKDAY_LABELS,        # ← 加这一行
         "current_user":          current_user(),
         "is_logged_in":          is_logged_in(),
     }
@@ -416,7 +467,11 @@ def home():
     meal       = request.args.get("meal", "all")
     q          = request.args.get("q", "").strip()
     canteen_id = request.args.get("canteen", "")
+    day        = request.args.get("day", "")
     vid        = g.visitor_id
+
+    # 根据 day 参数决定看哪天
+    target_weekday, day_key = resolve_day_param(day)
 
     conn = get_db()
 
@@ -441,6 +496,10 @@ def home():
 
     where_parts = []
     params = [vid]
+
+    # 按星期几筛（用 ',' 包裹防止 '1' 匹配到 '11'）
+    where_parts.append("(',' || d.weekdays || ',') LIKE ?")
+    params.append(f"%,{target_weekday},%")
 
     if meal in MEALS:
         where_parts.append("d.meal = ?")
@@ -496,8 +555,11 @@ def home():
         announcements=announcements,
         current_meal=meal,
         current_canteen=canteen_id,
+        current_day=day_key,
+        target_weekday=target_weekday,
         meals=MEALS,
         meal_label=MEAL_LABEL,
+        weekday_labels=WEEKDAY_LABELS,
         q=q,
     )
 
@@ -1556,14 +1618,15 @@ def dish_new():
 
         image_name = save_image(request.files.get("image"))
         is_new, spicy = parse_badges_from_form()
+        weekdays = parse_weekdays_from_form()
 
         conn.execute(
             "INSERT INTO dishes "
             "(stall_id, name, price, description, meal, image, "
-            " is_signature, is_new, spicy_level) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " is_signature, is_new, spicy_level, weekdays) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (int(stall_id), name, price_val, description, meal, image_name,
-             0, is_new, spicy),
+             0, is_new, spicy, weekdays),
         )
         conn.commit()
         conn.close()
@@ -1623,6 +1686,7 @@ def dish_edit(dish_id):
             conn.close()
             return "窗口不存在", 400
 
+        weekdays = parse_weekdays_from_form()
         is_new, spicy = parse_badges_from_form()
         new_image = save_image(request.files.get("image"))
         remove_image = request.form.get("remove_image") == "1"
@@ -1638,10 +1702,10 @@ def dish_edit(dish_id):
             conn.execute("""
                 UPDATE dishes SET stall_id = ?, name = ?, price = ?,
                     description = ?, meal = ?, image = NULL,
-                    is_new = ?, spicy_level = ?
+                    is_new = ?, spicy_level = ?, weekdays = ?
                 WHERE id = ?
             """, (int(stall_id), name, price_val, description, meal,
-                  is_new, spicy, dish_id))
+                  is_new, spicy, weekdays, dish_id))
         elif new_image:
             old = conn.execute(
                 "SELECT image FROM dishes WHERE id = ?", (dish_id,)
@@ -1653,18 +1717,18 @@ def dish_edit(dish_id):
             conn.execute("""
                 UPDATE dishes SET stall_id = ?, name = ?, price = ?,
                     description = ?, meal = ?, image = ?,
-                    is_new = ?, spicy_level = ?
+                    is_new = ?, spicy_level = ?, weekdays = ?
                 WHERE id = ?
             """, (int(stall_id), name, price_val, description, meal, new_image,
-                  is_new, spicy, dish_id))
+                  is_new, spicy, weekdays, dish_id))
         else:
             conn.execute("""
                 UPDATE dishes SET stall_id = ?, name = ?, price = ?,
                     description = ?, meal = ?,
-                    is_new = ?, spicy_level = ?
+                    is_new = ?, spicy_level = ?, weekdays = ?
                 WHERE id = ?
             """, (int(stall_id), name, price_val, description, meal,
-                  is_new, spicy, dish_id))
+                  is_new, spicy, weekdays, dish_id))
 
         conn.commit()
         conn.close()

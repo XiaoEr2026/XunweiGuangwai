@@ -50,6 +50,24 @@
           </select>
         </p>
 
+        <p>
+          <label>供应日（不选=每天）</label>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px;">
+            {% set current_days = (dish.weekdays or "").split(",") %}
+            {% for w, label in weekday_labels.items() %}
+              <label style="font-weight: normal; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input type="checkbox" name="weekdays" value="{{ w }}"
+                       {% if w|string in current_days %}checked{% endif %}
+                       style="width: auto; margin: 0;">
+                {{ label }}
+              </label>
+            {% endfor %}
+          </div>
+          <p style="font-size: 12.5px; color: var(--text-tertiary); margin-top: 6px;">
+            不勾任何 → 默认每天都有
+          </p>
+        </p>
+
         {# 当前图片（如果有） #}
         {% if dish.image %}
           <p>
