@@ -192,7 +192,7 @@
 
         var winner = cards[Math.floor(Math.random() * cards.length)];
 
-        var totalSteps = Math.min(16, Math.max(8, cards.length * 2));
+        var totalSteps = Math.min(24, Math.max(18, cards.length * 2.5));
         var step = 0;
 
         function nextFrame() {
@@ -214,7 +214,7 @@
             return;
           }
 
-          var delay = 60 + step * 22;
+          var delay = 25 + step * step * 0.9;
           setTimeout(nextFrame, delay);
         }
 
