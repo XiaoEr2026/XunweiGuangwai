@@ -1191,6 +1191,83 @@ def admin():
         return redirect(url_for("login"))
     return render_template("admin.html")
 
+@app.route("/settings", methods=["GET", "POST"])
+def settings():
+    uid = session.get("user_id")
+    if not uid:
+        return redirect(url_for("signin"))
+
+    conn = get_db()
+    user = conn.execute(
+        "SELECT * FROM users WHERE id = ?", (uid,)
+    ).fetchone()
+
+    if not user:
+        conn.close()
+        return redirect(url_for("signout"))
+
+    error = None
+    success = None
+
+    if request.method == "POST":
+        new_nickname = request.form.get("nickname", "").strip()
+
+        if not new_nickname:
+            error = "姓名不能为空"
+        elif len(new_nickname) > 20:
+            error = "姓名不能超过 20 字"
+        elif new_nickname == user["nickname"]:
+            error = "新姓名和当前一样，无需修改"
+        else:
+            vid = f"u{uid}"
+
+            # 1) 改 users 表
+            conn.execute(
+                "UPDATE users SET nickname = ? WHERE id = ?",
+                (new_nickname, uid)
+            )
+
+            # 2) 同步历史内容里显示的名字
+            conn.execute(
+                "UPDATE reviews SET author = ? WHERE visitor_id = ?",
+                (new_nickname, vid)
+            )
+            conn.execute(
+                "UPDATE posts SET author = ? WHERE visitor_id = ?",
+                (new_nickname, vid)
+            )
+            conn.execute(
+                "UPDATE post_replies SET author = ? WHERE visitor_id = ?",
+                (new_nickname, vid)
+            )
+
+            conn.commit()
+
+            success = f"已改名为「{new_nickname}」"
+            # 重新读一遍 user，让页面显示最新
+            user = conn.execute(
+                "SELECT * FROM users WHERE id = ?", (uid,)
+            ).fetchone()
+
+    # 统计信息
+    vid = f"u{uid}"
+    review_count = conn.execute(
+        "SELECT COUNT(*) AS c FROM reviews WHERE visitor_id = ?", (vid,)
+    ).fetchone()["c"]
+    post_count = conn.execute(
+        "SELECT COUNT(*) AS c FROM posts WHERE visitor_id = ?", (vid,)
+    ).fetchone()["c"]
+
+    conn.close()
+
+    return render_template(
+        "settings.html",
+        user=user,
+        error=error,
+        success=success,
+        review_count=review_count,
+        post_count=post_count,
+    )
 
 @app.route("/about")
 def about():

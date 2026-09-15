@@ -101,6 +101,7 @@
         {% endif %}
 
         {% if is_logged_in %}
+          <a href="/settings" class="nav-link">⚙️ 设置</a>
           <span class="nav-user">{{ current_user.nickname }}</span>
           <a href="/signout" class="nav-link nav-link-quiet">退出</a>
         {% else %}

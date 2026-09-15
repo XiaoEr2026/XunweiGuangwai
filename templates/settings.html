@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>个人设置 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/">← 返回首页</a>
+
+    <h1 class="detail-title">⚙️ 个人设置</h1>
+    <p class="detail-meta">管理你的账号信息</p>
+
+    {% if success %}
+      <div class="form-card" style="border-left: 4px solid var(--color-success); margin-top: 16px;">
+        <p style="margin: 0; color: var(--color-success); font-weight: 600;">✓ {{ success }}</p>
+      </div>
+    {% endif %}
+
+    {% if error %}
+      <div class="form-card" style="border-left: 4px solid var(--color-danger); margin-top: 16px;">
+        <p style="margin: 0; color: var(--color-danger); font-weight: 600;">{{ error }}</p>
+      </div>
+    {% endif %}
+
+    {# ============ 账号信息 ============ #}
+    <div class="form-card" style="margin-top: 20px;">
+      <h2 style="margin: 0 0 14px; font-size: 16px;">📋 账号信息</h2>
+      <p style="margin: 6px 0; font-size: 14px; color: var(--text-secondary);">
+        邮箱：<strong style="color: var(--text-primary);">{{ user.email }}</strong>
+      </p>
+      <p style="margin: 6px 0; font-size: 14px; color: var(--text-secondary);">
+        注册时间：<strong style="color: var(--text-primary);">{{ user.created_at }}</strong>
+      </p>
+      <p style="margin: 6px 0; font-size: 14px; color: var(--text-secondary);">
+        你发过 <strong style="color: var(--text-primary);">{{ review_count }}</strong> 条评价 ·
+        <strong style="color: var(--text-primary);">{{ post_count }}</strong> 条拼饭帖
+      </p>
+    </div>
+
+    {# ============ 修改姓名 ============ #}
+    <div class="form-card" style="margin-top: 16px;">
+      <h2 style="margin: 0 0 14px; font-size: 16px;">✏️ 修改姓名</h2>
+
+      <form method="post">
+        <p>
+          <label>当前姓名</label>
+          <input type="text" value="{{ user.nickname }}" disabled
+                 style="background: var(--bg-subtle); color: var(--text-tertiary);">
+        </p>
+        <p>
+          <label>新姓名</label>
+          <input type="text" name="nickname" required maxlength="20"
+                 placeholder="请输入新的真实姓名" autocomplete="off">
+        </p>
+
+        <p style="background: #fff4e6; padding: 12px 16px; border-radius: 8px;
+                  font-size: 13px; color: #d9480f; line-height: 1.7; margin-top: -8px;">
+          ⚠️ <strong>改名提示：</strong>改名后，你的<strong>历史评价、拼饭帖、回复</strong>
+          也会同步显示新姓名。请使用真实姓名，伪造姓名可能被管理员禁言。
+        </p>
+
+        <p>
+          <button type="submit" class="btn">保存新姓名</button>
+        </p>
+      </form>
+    </div>
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>
