@@ -5,6 +5,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>公告管理 - 寻味广外</title>
   <link rel="stylesheet" href="/static/style.css">
+
+  <!-- Quill 富文本编辑器（CDN） -->
+  <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+
+  <style>
+    /* Quill 编辑器高度 */
+    #editor-container {
+      height: 260px;
+      background: #fff;
+      border-radius: 0 0 8px 8px;
+    }
+    /* 让 Quill 工具栏跟主题协调 */
+    .ql-toolbar.ql-snow {
+      border-radius: 8px 8px 0 0;
+      background: #f8f9fa;
+      border-color: var(--border, #ddd);
+    }
+    .ql-container.ql-snow {
+      border-color: var(--border, #ddd);
+      font-size: 15px;
+      font-family: inherit;
+    }
+    /* 暗色模式适配 */
+    [data-theme="dark"] #editor-container,
+    [data-theme="dark"] .ql-toolbar.ql-snow {
+      background: #2b2b2b;
+      border-color: #444;
+    }
+    [data-theme="dark"] .ql-container.ql-snow {
+      border-color: #444;
+      color: #eee;
+    }
+    [data-theme="dark"] .ql-snow .ql-stroke { stroke: #ccc; }
+    [data-theme="dark"] .ql-snow .ql-fill { fill: #ccc; }
+    [data-theme="dark"] .ql-snow .ql-picker { color: #ccc; }
+  </style>
 </head>
 <body>
 
@@ -15,22 +51,25 @@
     <a class="back-link" href="/admin">← 返回后台首页</a>
 
     <h1 class="detail-title">公告管理</h1>
-    <p class="detail-meta">发布给全体学生看的通知。新菜上架、窗口调整、停餐通知都可以发这里。</p>
+    <p class="detail-meta">发布给全体学生看的通知。支持字号、颜色、加粗、插图。</p>
 
     <div class="form-card" style="margin-top: 20px;">
       <h2 style="margin: 0 0 14px; font-size: 16px;">发布新公告</h2>
 
-      <form method="post">
+      <form method="post" id="announce-form">
         <p>
           <label>标题</label>
           <input type="text" name="title" required maxlength="80"
                  placeholder="例：一期三楼明天停餐">
         </p>
+
         <p>
           <label>内容（可选）</label>
-          <textarea name="content" rows="3" maxlength="500"
-                    placeholder="补充说明，比如具体原因、恢复时间等"></textarea>
+          <div id="editor-container"></div>
+          <!-- Quill 的内容会塞进这个隐藏字段提交 -->
+          <input type="hidden" name="content" id="content-input">
         </p>
+
         <p>
           <label>重要程度</label>
           <select name="level">
@@ -42,7 +81,6 @@
 
         <p>
           <label>过期时间（可选）</label>
-          {# datetime-local：浏览器/手机自带日期+时间选择器 #}
           <input type="datetime-local" name="expires_at" id="expires-at">
           <small style="display: block; margin-top: 6px; color: var(--text-tertiary); font-size: 12.5px;">
             留空表示永久有效。到期后学生端首页自动隐藏，但历史记录仍可查。
@@ -100,10 +138,10 @@
           </div>
 
           {% if a.content %}
-            <p class="announce-content">{{ a.content }}</p>
+            <div class="announce-content">{{ a.content|safe }}</div>
           {% endif %}
 
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px;">
             <p class="announce-time" style="margin: 0;">
               {{ a.created_at }}
               {% if a.expires_at %}
@@ -128,19 +166,79 @@
 
   </div>
 
+  <!-- Quill 本体 -->
+  <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+
   <script>
-    // 清除已选时间
+    // ============ 初始化 Quill ============
+    var quill = new Quill('#editor-container', {
+      theme: 'snow',
+      placeholder: '补充说明，比如具体原因、恢复时间等…',
+      modules: {
+        toolbar: [
+          [{ 'size': ['small', false, 'large', 'huge'] }],   // 字号大小
+          ['bold', 'italic', 'underline', 'strike'],          // 加粗 / 斜体 / 下划线 / 删除线
+          [{ 'color': [] }, { 'background': [] }],            // 文字颜色 / 背景色
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }],      // 有序 / 无序列表
+          [{ 'align': [] }],                                  // 对齐
+          ['link', 'image'],                                  // 链接 / 图片
+          ['clean']                                           // 清除格式
+        ]
+      }
+    });
+
+    // ============ 图片上传：不用外链，直接传本地图 ============
+    quill.getModule('toolbar').addHandler('image', function () {
+      var input = document.createElement('input');
+      input.setAttribute('type', 'file');
+      input.setAttribute('accept', 'image/*');
+      input.click();
+
+      input.onchange = function () {
+        var file = input.files[0];
+        if (!file) return;
+
+        var fd = new FormData();
+        fd.append('image', file);
+
+        fetch('/admin/announcements/upload-image', {
+          method: 'POST',
+          body: fd
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data.ok) {
+            alert(data.msg || '图片上传失败');
+            return;
+          }
+          var range = quill.getSelection(true);
+          quill.insertEmbed(range.index, 'image', data.url);
+          quill.setSelection(range.index + 1);
+        })
+        .catch(function () {
+          alert('网络异常，图片上传失败');
+        });
+      };
+    });
+
+    // ============ 提交前把 Quill HTML 塞进隐藏字段 ============
+    document.getElementById('announce-form').addEventListener('submit', function () {
+      var html = quill.root.innerHTML;
+      // Quill 空内容时是 <p><br></p>，转成空字符串
+      if (html === '<p><br></p>') html = '';
+      document.getElementById('content-input').value = html;
+    });
+
+    // ============ 时间辅助函数 ============
     function clearExpires(e) {
       e.preventDefault();
       document.getElementById('expires-at').value = '';
     }
 
-    // 快捷设为 N 天后
     function quickExpires(e, days) {
       e.preventDefault();
       var d = new Date();
       d.setDate(d.getDate() + days);
-      // 格式：YYYY-MM-DDTHH:MM
       var pad = function (n) { return (n < 10 ? '0' : '') + n; };
       var val = d.getFullYear() + '-' +
                 pad(d.getMonth() + 1) + '-' +

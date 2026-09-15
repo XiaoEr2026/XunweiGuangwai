@@ -66,7 +66,7 @@
             </div>
             {% if a.content %}
               <p class="announce-content" style="margin-top: 6px;">
-                {{ a.content[:60] }}{% if a.content|length > 60 %}…{% endif %}
+                {{ a.content|striptags|truncate(60, true, '…') }}
               </p>
             {% endif %}
           </div>

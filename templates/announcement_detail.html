@@ -32,7 +32,7 @@
       <h1 class="detail-title" style="margin-top: 0;">{{ item.title }}</h1>
 
       {% if item.content %}
-        <p class="announce-full-content">{{ item.content }}</p>
+        <div class="announce-full-content">{{ item.content|safe }}</div>
       {% endif %}
 
       <p class="announce-time" style="margin-top: 20px;">

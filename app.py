@@ -26,12 +26,14 @@ app = Flask(__name__)
 app.secret_key = "change-me-to-a-random-string-07-platform"
 
 DB_PATH = "07.db"
-UPLOAD_DIR      = os.path.join("static", "uploads")
-MENU_PHOTO_DIR  = os.path.join("static", "menu_photos")
-DISH_IMAGE_DIR  = os.path.join("static", "dish_images")
+UPLOAD_DIR       = os.path.join("static", "uploads")
+MENU_PHOTO_DIR   = os.path.join("static", "menu_photos")
+DISH_IMAGE_DIR   = os.path.join("static", "dish_images")
+ANNOUNCE_IMG_DIR = os.path.join("static", "announcement_images")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(MENU_PHOTO_DIR, exist_ok=True)
 os.makedirs(DISH_IMAGE_DIR, exist_ok=True)
+os.makedirs(ANNOUNCE_IMG_DIR, exist_ok=True)
 
 ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
@@ -2506,6 +2508,28 @@ def admin_announcements_delete(aid):
     conn.commit()
     conn.close()
     return redirect(url_for("admin_announcements"))
+
+@app.route("/admin/announcements/upload-image", methods=["POST"])
+def admin_announcements_upload_image():
+    """公告编辑器里的插图上传接口，返回 {"ok": true, "url": "..."} """
+    if not is_admin():
+        return jsonify({"ok": False, "msg": "未登录"}), 403
+
+    file = request.files.get("image")
+    if not file or not file.filename:
+        return jsonify({"ok": False, "msg": "没有选择文件"}), 400
+    if not is_allowed(file.filename):
+        return jsonify({"ok": False, "msg": "只支持 jpg / png / gif / webp"}), 400
+
+    # 中文文件名会被 secure_filename 清空，兜底成 "image"
+    safe = secure_filename(file.filename) or "image"
+    filename = f"{int(time.time())}_{secrets.token_hex(4)}_{safe}"
+    file.save(os.path.join(ANNOUNCE_IMG_DIR, filename))
+
+    return jsonify({
+        "ok": True,
+        "url": f"/static/announcement_images/{filename}",
+    })
 
 
 # ============================================================
