@@ -485,6 +485,7 @@ def inject_globals():
             pending_feedback = 0
 
     unread_announcements = 0
+    unread_announcement_list = []
     vid = getattr(g, "visitor_id", None)
     if vid:
         try:
@@ -498,8 +499,23 @@ def inject_globals():
                   )
             """, (vid,)).fetchone()
             unread_announcements = row["c"] if row else 0
+
+            # 弹窗用：未读公告完整列表（含标题、内容、级别）
+            rows = conn.execute("""
+                SELECT id, title, content, level
+                FROM announcements
+                WHERE (expires_at IS NULL
+                       OR expires_at >= datetime('now', '+8 hours'))
+                  AND id NOT IN (
+                      SELECT announcement_id FROM announcement_reads
+                      WHERE visitor_id = ?
+                  )
+                ORDER BY is_pinned DESC, id DESC
+            """, (vid,)).fetchall()
+            unread_announcement_list = [dict(r) for r in rows]
         except Exception:
             unread_announcements = 0
+            unread_announcement_list = []
 
     # 未读的管理员回复（只对学生）—— 注意放在 conn.close() 之前
     unread_replies = 0
@@ -525,7 +541,8 @@ def inject_globals():
         "spicy_labels":          SPICY_LABELS,
         "mood_labels":           MOOD_LABELS,
         "pending_feedback":      pending_feedback,
-        "unread_announcements":  unread_announcements,
+        "unread_announcements":      unread_announcements,
+        "unread_announcement_list":  unread_announcement_list,
         "unread_replies":        unread_replies,
         "weekday_labels":        WEEKDAY_LABELS,        # ← 加这一行
         "current_user":          current_user(),
@@ -2531,6 +2548,25 @@ def admin_announcements_upload_image():
         "url": f"/static/announcement_images/{filename}",
     })
 
+@app.route("/announcements/<int:aid>/read", methods=["POST"])
+def announcement_mark_read(aid):
+    """弹窗读完时调这个接口，标记为已读"""
+    vid = g.visitor_id
+    if not vid:
+        return jsonify({"ok": False}), 400
+
+    conn = get_db()
+    try:
+        conn.execute(
+            "INSERT OR IGNORE INTO announcement_reads "
+            "(visitor_id, announcement_id) VALUES (?, ?)",
+            (vid, aid),
+        )
+        conn.commit()
+    except Exception:
+        pass
+    conn.close()
+    return jsonify({"ok": True})
 
 # ============================================================
 # 菜单照片

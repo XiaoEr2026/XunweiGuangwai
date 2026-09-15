@@ -53,27 +53,6 @@
       </a>
     </div>
 
-    {# ==================== 重要公告横幅 ==================== #}
-    {% set important = announcements | selectattr("level", "equalto", "danger") | list %}
-    {% if important %}
-      {% for a in important %}
-        <a href="/announcements/{{ a.id }}"
-           style="display: block; text-decoration: none; color: inherit;">
-          <div class="announce-card announce-danger" style="margin: 4px 0 20px;">
-            <div class="announce-head">
-              <span class="announce-tag tag-danger">重要</span>
-              <h3 class="announce-title">{{ a.title }}</h3>
-            </div>
-            {% if a.content %}
-              <p class="announce-content" style="margin-top: 6px;">
-                {{ a.content|striptags|truncate(60, true, '…') }}
-              </p>
-            {% endif %}
-          </div>
-        </a>
-      {% endfor %}
-    {% endif %}
-
     {# ==================== 随机选菜按钮 ==================== #}
     {% if dishes %}
       <div class="random-pick-wrap">
@@ -145,6 +124,112 @@
     {% endif %}
 
   </div>
+
+  {# ==================== 公告弹窗 ==================== #}
+  <div class="announce-modal" id="announce-modal">
+    <div id="announce-data" data-list="{{ unread_announcement_list|tojson|forceescape }}" style="display:none;"></div>
+    <div class="announce-modal-mask"></div>
+    <div class="announce-modal-card">
+      <div class="announce-modal-head">
+        <span class="announce-tag tag-info" id="announce-modal-tag">通知</span>
+        <h3 class="announce-modal-title" id="announce-modal-title"></h3>
+      </div>
+      <div class="announce-modal-body" id="announce-modal-body"></div>
+      <div class="announce-modal-foot">
+        <span class="announce-modal-progress" id="announce-modal-progress"></span>
+        <button type="button" class="announce-modal-ok" id="announce-modal-ok">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .announce-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+    }
+    .announce-modal.show { display: block; }
+    .announce-modal-mask {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(2px);
+    }
+    .announce-modal-card {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: calc(100% - 48px);
+      max-width: 520px;
+      max-height: 80vh;
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px 26px 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    [data-theme="dark"] .announce-modal-card {
+      background: #2b2b2b;
+      color: #eee;
+    }
+    .announce-modal-head { margin-bottom: 12px; }
+    .announce-modal-title {
+      margin: 8px 0 0;
+      font-size: 19px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+    .announce-modal-body {
+      flex: 1;
+      overflow-y: auto;
+      font-size: 15px;
+      line-height: 1.75;
+      padding-right: 4px;
+      word-break: break-word;
+    }
+    .announce-modal-body img {
+      max-width: 100%;
+      border-radius: 8px;
+      margin: 8px 0;
+    }
+    .announce-modal-foot {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid #eee;
+    }
+    [data-theme="dark"] .announce-modal-foot { border-top-color: #444; }
+    .announce-modal-progress {
+      font-size: 13px;
+      color: #999;
+    }
+    .announce-modal-ok {
+      padding: 10px 28px;
+      background: linear-gradient(135deg, #FF7A45 0%, #ff9640 100%);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(255, 122, 69, 0.35);
+      transition: transform 0.12s;
+    }
+    .announce-modal-ok:active {
+      transform: scale(0.96);
+    }
+  </style>
+
+  <script>
+    // 未读公告数据从后端注入
+  </script>
 
   {# ==================== 随机选菜弹窗 ==================== #}
   <div class="random-modal" id="random-modal">
@@ -242,6 +327,73 @@
           closeModal();
         }
       });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var dataEl = document.getElementById('announce-data');
+      var list = [];
+      if (dataEl) {
+        try { list = JSON.parse(dataEl.getAttribute('data-list')); } catch (e) { list = []; }
+      }
+      if (!list.length) return;
+
+      var modal     = document.getElementById('announce-modal');
+      if (!modal) return;
+
+      var tagEl     = document.getElementById('announce-modal-tag');
+      var titleEl   = document.getElementById('announce-modal-title');
+      var bodyEl    = document.getElementById('announce-modal-body');
+      var progEl    = document.getElementById('announce-modal-progress');
+      var okBtn     = document.getElementById('announce-modal-ok');
+      var maskEl    = modal.querySelector('.announce-modal-mask');
+
+      var LEVEL_TEXT  = { info: '通知', warning: '注意', danger: '重要' };
+      var LEVEL_CLASS = {
+        info:    'announce-tag tag-info',
+        warning: 'announce-tag tag-warning',
+        danger:  'announce-tag tag-danger'
+      };
+
+      var idx = 0;
+
+      function show(i) {
+        var a = list[i];
+        tagEl.className = LEVEL_CLASS[a.level] || 'announce-tag tag-info';
+        tagEl.innerText = LEVEL_TEXT[a.level] || '通知';
+        titleEl.innerText = a.title || '';
+        bodyEl.innerHTML = a.content || '<p>（无正文）</p>';
+        progEl.innerText = list.length > 1 ? (i + 1) + ' / ' + list.length : '';
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function markRead(id) {
+        fetch('/announcements/' + id + '/read', { method: 'POST' })
+          .catch(function () {});
+      }
+
+      function next() {
+        if (idx < list.length) markRead(list[idx].id);
+        idx++;
+        if (idx >= list.length) {
+          modal.classList.remove('show');
+          document.body.style.overflow = '';
+          return;
+        }
+        show(idx);
+      }
+
+      okBtn.addEventListener('click', next);
+      maskEl.addEventListener('click', next);
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && modal.classList.contains('show')) {
+          next();
+        }
+      });
+
+      show(0);
     })();
   </script>
 
