@@ -42,15 +42,15 @@
     </section>
 
     {# ==================== 今天 / 明天 ==================== #}
-    <div class="day-tabs">
-      <a href="/?day=today{% if current_meal != 'all' %}&meal={{ current_meal }}{% endif %}{% if current_canteen %}&canteen={{ current_canteen }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
-         class="day-tab {% if current_day == 'today' %}active{% endif %}">
-        📍 今天（{{ weekday_labels[target_weekday] if current_day == 'today' else '' }}）
-      </a>
-      <a href="/?day=tomorrow{% if current_meal != 'all' %}&meal={{ current_meal }}{% endif %}{% if current_canteen %}&canteen={{ current_canteen }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
-         class="day-tab {% if current_day == 'tomorrow' %}active{% endif %}">
-        📅 明天
-      </a>
+        {# ==================== 周一 ~ 周日 ==================== #}
+    <div class="day-tabs" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+      {% for w in [1,2,3,4,5,6,7] %}
+        <a href="/?day={{ w }}{% if current_meal != 'all' %}&meal={{ current_meal }}{% endif %}{% if current_canteen %}&canteen={{ current_canteen }}{% endif %}{% if current_stall %}&stall={{ current_stall }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+           class="day-tab {% if target_weekday == w %}active{% endif %}"
+           style="white-space: nowrap; flex-shrink: 0;">
+          {{ weekday_labels[w] }}{% if w == today_weekday %} · 今{% endif %}
+        </a>
+      {% endfor %}
     </div>
 
     {# ==================== 随机选菜按钮 ==================== #}
@@ -78,6 +78,27 @@
           <span class="canteen-chip-name">{{ c.name }}</span>
           <span class="canteen-chip-count">{{ c.dish_count }}</span>
         </a>
+      {% endfor %}
+    </div>
+
+        {# ==================== 窗口快捷胶囊 ==================== #}
+    <h2 class="section-title" style="margin-top: 20px;">🍽️ 按窗口找</h2>
+
+    <div class="canteen-scroll">
+      <a href="/?day={{ current_day }}{% if current_canteen %}&canteen={{ current_canteen }}{% endif %}{% if current_meal != 'all' %}&meal={{ current_meal }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+         class="canteen-chip {% if not current_stall %}active{% endif %}">
+        <span class="canteen-chip-emoji">🎯</span>
+        <span class="canteen-chip-name">全部窗口</span>
+      </a>
+      {% for s in all_stalls %}
+        {% if not current_canteen or s.canteen_id|string == current_canteen %}
+          <a href="/?day={{ current_day }}&stall={{ s.id }}{% if current_canteen %}&canteen={{ current_canteen }}{% endif %}{% if current_meal != 'all' %}&meal={{ current_meal }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+             class="canteen-chip {% if current_stall == s.id|string %}active{% endif %}">
+            <span class="canteen-chip-emoji">🍽️</span>
+            <span class="canteen-chip-name">{{ s.canteen_name }} · {{ s.name }}</span>
+            <span class="canteen-chip-count">{{ s.dish_count }}</span>
+          </a>
+        {% endif %}
       {% endfor %}
     </div>
 

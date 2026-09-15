@@ -222,27 +222,18 @@ def get_bj_now():
 
 
 def resolve_day_param(day):
-    """决定当前应该看哪天的菜。
-       day: 'today' / 'tomorrow' / 其他
-       返回 (target_weekday, day_key)
-       target_weekday: 1~7（周一~周日）
-       day_key: 'today' 或 'tomorrow'
+    """根据 day 参数决定看周几的菜。
+       day: '1'~'7'（周一~周日）或空
+       返回 target_weekday（1~7）
     """
     bj = get_bj_now()
-    today_weekday = bj.isoweekday()      # 1=周一 ... 7=周日
-    tomorrow_weekday = today_weekday % 7 + 1
-    hour = bj.hour
+    today_weekday = bj.isoweekday()
 
-    if day == "tomorrow":
-        return tomorrow_weekday, "tomorrow"
-    if day == "today":
-        return today_weekday, "today"
+    if day and day.isdigit() and 1 <= int(day) <= 7:
+        return int(day)
 
-    # 没有 day 参数：默认策略
-    # 晚上 19:00 后 → 默认看明天
-    if hour >= 19:
-        return tomorrow_weekday, "tomorrow"
-    return today_weekday, "today"
+    # 默认今天
+    return today_weekday
 
 def current_author_name():
     """评论/拼饭显示的名字。
@@ -559,11 +550,14 @@ def home():
     meal       = request.args.get("meal", "all")
     q          = request.args.get("q", "").strip()
     canteen_id = request.args.get("canteen", "")
-    day        = request.args.get("day", "")
+    stall_id   = request.args.get("stall", "")
+    day        = request.args.get("day", "").strip()
     vid        = g.visitor_id
 
-    # 根据 day 参数决定看哪天
-    target_weekday, day_key = resolve_day_param(day)
+    # 根据 day 参数决定看周几
+    target_weekday = resolve_day_param(day)
+    bj = get_bj_now()
+    today_weekday = bj.isoweekday()
 
     conn = get_db()
 
@@ -584,6 +578,18 @@ def home():
         LEFT JOIN dishes d ON d.stall_id   = s.id
         GROUP BY c.id
         ORDER BY c.sort_order, c.id
+    """).fetchall()
+
+    all_stalls = conn.execute("""
+        SELECT s.id, s.name,
+               c.id   AS canteen_id,
+               c.name AS canteen_name,
+               COUNT(d.id) AS dish_count
+        FROM stalls s
+        JOIN canteens c ON c.id = s.canteen_id
+        LEFT JOIN dishes d ON d.stall_id = s.id
+        GROUP BY s.id
+        ORDER BY c.sort_order, c.id, s.sort_order, s.id
     """).fetchall()
 
     where_parts = []
@@ -611,6 +617,12 @@ def home():
         params.append(int(canteen_id))
     else:
         canteen_id = ""
+
+    if stall_id.isdigit():
+        where_parts.append("s.id = ?")
+        params.append(int(stall_id))
+    else:
+        stall_id = ""
 
     where_sql = ("WHERE " + " AND ".join(where_parts)) if where_parts else ""
 
@@ -643,12 +655,15 @@ def home():
     return render_template(
         "menu.html",
         canteens=canteens,
+        all_stalls=all_stalls,
         dishes=dishes,
         announcements=announcements,
         current_meal=meal,
         current_canteen=canteen_id,
-        current_day=day_key,
+        current_stall=stall_id,
+        current_day=str(target_weekday),   # 链接里用的 day 参数
         target_weekday=target_weekday,
+        today_weekday=today_weekday,
         meals=MEALS,
         meal_label=MEAL_LABEL,
         weekday_labels=WEEKDAY_LABELS,
