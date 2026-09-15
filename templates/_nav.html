@@ -41,12 +41,7 @@
         <a href="/admin" class="nav-link">后台首页</a>
         <a href="/admin/dishes" class="nav-link">菜品管理</a>
         <a href="/admin/dishes/bulk" class="nav-link">批量导入</a>
-        <a href="/admin/announcements" class="nav-link">
-          公告
-          {% if unread_announcements > 0 %}
-            <span class="nav-badge">{{ unread_announcements }}</span>
-          {% endif %}
-        </a>
+        <a href="/admin/announcements" class="nav-link">公告</a>
 
         <a href="/admin/pending" class="nav-link">
           审核
