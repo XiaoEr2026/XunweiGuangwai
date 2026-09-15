@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ dish.name }} - 寻味广外</title>
   <link rel="stylesheet" href="/static/style.css">
+
+  <style>
+    .status-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      margin-left: 6px;
+      font-weight: 600;
+      vertical-align: middle;
+    }
+    .status-pending  { background: #fff4e6; color: #d9480f; }
+    .status-approved { background: #d3f9d8; color: #2b8a3e; }
+    .status-rejected { background: #ffe3e3; color: #c92a2a; }
+  </style>
 </head>
 <body>
 
@@ -85,6 +100,13 @@
         <div class="review">
           <p>
             <span class="review-author">{{ r.author }}</span>
+            {% if r.status == 'pending' %}
+              <span class="status-tag status-pending">⏳ 审核中</span>
+            {% elif r.status == 'rejected' %}
+              <span class="status-tag status-rejected">❌ 未通过</span>
+            {% elif r.status == 'approved' and r.visitor_id and r.visitor_id == my_visitor_id %}
+              <span class="status-tag status-approved">✓ 已通过</span>
+            {% endif %}
             {% if r.visitor_id == "admin" %}
               <span class="admin-tag">👑 管理员</span>
             {% endif %}

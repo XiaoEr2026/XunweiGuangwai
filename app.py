@@ -185,6 +185,30 @@ def parse_week_columns(text):
 
     return results, skipped
 
+def visitor_to_user_id(vid):
+    """把 visitor_id（如 'u5'）转成 user_id（5）。
+       非登录访客（cookie 串）返回 None。
+    """
+    if vid and vid.startswith("u") and vid[1:].isdigit():
+        return int(vid[1:])
+    return None
+
+
+def push_notification(conn, vid, ntype, title, content="", link=""):
+    """往 notifications 表插一条通知。vid 是 visitor_id。"""
+    uid = visitor_to_user_id(vid)
+    if not uid:
+        return
+    try:
+        conn.execute(
+            "INSERT INTO notifications "
+            "(user_id, type, title, content, link) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (uid, ntype, title, content or None, link or None)
+        )
+    except Exception:
+        pass
+
 def get_client_ip():
     """拿访客 IP（兼容反向代理）"""
     ip = request.headers.get("X-Forwarded-For", request.remote_addr or "")
@@ -465,6 +489,9 @@ def inject_globals():
 
     conn = get_db()
 
+    # 先拿出当前登录的学生 uid（下面几处都要用）
+    uid = session.get("user_id")
+
     pending_feedback = 0
     if is_admin():
         try:
@@ -491,7 +518,6 @@ def inject_globals():
             """, (vid,)).fetchone()
             unread_announcements = row["c"] if row else 0
 
-            # 弹窗用：未读公告完整列表（含标题、内容、级别）
             rows = conn.execute("""
                 SELECT id, title, content, level
                 FROM announcements
@@ -508,9 +534,19 @@ def inject_globals():
             unread_announcements = 0
             unread_announcement_list = []
 
-    # 未读的管理员回复（只对学生）—— 注意放在 conn.close() 之前
+    # 待审核数量（只对管理员）
+    pending_audit = 0
+    if is_admin():
+        try:
+            c1 = conn.execute("SELECT COUNT(*) AS c FROM reviews WHERE status='pending'").fetchone()["c"]
+            c2 = conn.execute("SELECT COUNT(*) AS c FROM posts WHERE status='pending'").fetchone()["c"]
+            c3 = conn.execute("SELECT COUNT(*) AS c FROM post_replies WHERE status='pending'").fetchone()["c"]
+            pending_audit = c1 + c2 + c3
+        except Exception:
+            pending_audit = 0
+
+    # 未读的管理员回复（只对学生）
     unread_replies = 0
-    uid = session.get("user_id")
     if uid and not is_admin():
         try:
             row = conn.execute("""
@@ -524,20 +560,35 @@ def inject_globals():
         except Exception:
             unread_replies = 0
 
-    conn.close()   # ← 移到这里，所有查询都完了才关
+    # 未读通知（只对学生）
+    unread_notifications = 0
+    if uid and not is_admin():
+        try:
+            row = conn.execute(
+                "SELECT COUNT(*) AS c FROM notifications "
+                "WHERE user_id = ? AND is_read = 0",
+                (uid,)
+            ).fetchone()
+            unread_notifications = row["c"] if row else 0
+        except Exception:
+            unread_notifications = 0
+
+    conn.close()
 
     return {
-        "is_admin":              is_admin(),
-        "is_admin_page":         is_admin_page,
-        "spicy_labels":          SPICY_LABELS,
-        "mood_labels":           MOOD_LABELS,
-        "pending_feedback":      pending_feedback,
+        "is_admin":                  is_admin(),
+        "is_admin_page":             is_admin_page,
+        "spicy_labels":              SPICY_LABELS,
+        "mood_labels":               MOOD_LABELS,
+        "pending_feedback":          pending_feedback,
+        "pending_audit":             pending_audit,
         "unread_announcements":      unread_announcements,
         "unread_announcement_list":  unread_announcement_list,
-        "unread_replies":        unread_replies,
-        "weekday_labels":        WEEKDAY_LABELS,        # ← 加这一行
-        "current_user":          current_user(),
-        "is_logged_in":          is_logged_in(),
+        "unread_replies":            unread_replies,
+        "unread_notifications":      unread_notifications,
+        "weekday_labels":            WEEKDAY_LABELS,
+        "current_user":              current_user(),
+        "is_logged_in":              is_logged_in(),
     }
 
 
@@ -644,7 +695,7 @@ def home():
         FROM dishes d
         JOIN stalls s   ON s.id = d.stall_id
         JOIN canteens c ON c.id = s.canteen_id
-        LEFT JOIN reviews r ON r.dish_id = d.id
+        LEFT JOIN reviews r ON r.dish_id = d.id AND r.status = 'approved'
         {where_sql}
         GROUP BY d.id
         ORDER BY c.sort_order, c.id, s.sort_order, s.id, d.id
@@ -695,7 +746,7 @@ def my_favorites():
         JOIN dishes d   ON d.id = f.dish_id
         JOIN stalls s   ON s.id = d.stall_id
         JOIN canteens c ON c.id = s.canteen_id
-        LEFT JOIN reviews r ON r.dish_id = d.id
+        LEFT JOIN reviews r ON r.dish_id = d.id AND r.status = 'approved'
         WHERE f.visitor_id = ?
         GROUP BY d.id
         ORDER BY f.created_at DESC
@@ -885,7 +936,7 @@ def stall_view(stall_id):
                    WHERE f.dish_id = d.id AND f.visitor_id = ?
                ) AS is_favorited
         FROM dishes d
-        LEFT JOIN reviews r ON r.dish_id = d.id
+        LEFT JOIN reviews r ON r.dish_id = d.id AND r.status = 'approved'
         WHERE d.stall_id = ? {meal_sql}
         GROUP BY d.id
         ORDER BY d.id
@@ -929,7 +980,7 @@ def dish_detail(dish_id):
         FROM dishes d
         JOIN stalls s   ON s.id = d.stall_id
         JOIN canteens c ON c.id = s.canteen_id
-        LEFT JOIN reviews r ON r.dish_id = d.id
+        LEFT JOIN reviews r ON r.dish_id = d.id AND r.status = 'approved'
         WHERE d.id = ?
         GROUP BY d.id
     """, (vid, dish_id)).fetchone()
@@ -977,10 +1028,11 @@ def dish_detail(dish_id):
         if author and content and rating.isdigit():
             conn.execute(
                 "INSERT INTO reviews "
-                "(dish_id, author, rating, content, photo, visitor_id) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (dish_id, author, int(rating), content, photo_name, vid),
+                "(dish_id, author, rating, content, photo, visitor_id, status) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (dish_id, author, int(rating), content, photo_name, vid, "pending"),
             )
+            conn.commit()
             conn.commit()
         conn.close()
         return redirect(url_for("dish_detail", dish_id=dish_id))
@@ -994,7 +1046,7 @@ def dish_detail(dish_id):
 
     reviews = conn.execute(f"""
         SELECT r.id, r.author, r.rating, r.content, r.photo, r.created_at,
-               r.visitor_id,
+               r.visitor_id, r.status,
                (SELECT COUNT(*) FROM review_likes rl
                 WHERE rl.review_id = r.id) AS like_count,
                EXISTS(
@@ -1003,8 +1055,9 @@ def dish_detail(dish_id):
                ) AS is_liked
         FROM reviews r
         WHERE r.dish_id = ?
+          AND (r.status = 'approved' OR r.visitor_id = ?)
         ORDER BY {order_sql}
-    """, (vid, dish_id)).fetchall()
+    """, (vid, dish_id, vid)).fetchall()
     conn.close()
     return render_template(
         "dish.html",
@@ -1214,7 +1267,7 @@ def hot():
         FROM dishes d
         JOIN stalls s   ON s.id = d.stall_id
         JOIN canteens c ON c.id = s.canteen_id
-        LEFT JOIN reviews r ON r.dish_id = d.id
+        LEFT JOIN reviews r ON r.dish_id = d.id AND r.status = 'approved'
         GROUP BY d.id
         HAVING review_count >= 3
         ORDER BY avg_rating DESC, review_count DESC
@@ -1230,7 +1283,7 @@ def hot():
         FROM dishes d
         JOIN stalls s   ON s.id = d.stall_id
         JOIN canteens c ON c.id = s.canteen_id
-        LEFT JOIN reviews r ON r.dish_id = d.id
+        LEFT JOIN reviews r ON r.dish_id = d.id AND r.status = 'approved'
         GROUP BY d.id
         HAVING review_count > 0
         ORDER BY review_count DESC, avg_rating DESC
@@ -1279,6 +1332,7 @@ def board():
         FROM posts p
         LEFT JOIN stalls s   ON s.id = p.stall_id
         LEFT JOIN canteens c ON c.id = s.canteen_id
+        WHERE p.status = 'approved'
         ORDER BY p.last_reply_at DESC
         LIMIT 50
     """).fetchall()
@@ -1343,8 +1397,8 @@ def board_new():
                 conn.execute("""
                     INSERT INTO posts
                     (author, content, when_time, contact, stall_id, visitor_id,
-                     last_reply_at)
-                    VALUES (?, ?, ?, ?, ?, ?, datetime('now', '+8 hours'))
+                     last_reply_at, status)
+                    VALUES (?, ?, ?, ?, ?, ?, datetime('now', '+8 hours'), 'pending')
                 """, (author, content, when_time or None, contact or None,
                       stall_val, vid))
                 conn.commit()
@@ -1375,7 +1429,8 @@ def board_detail(post_id):
         LEFT JOIN stalls s   ON s.id = p.stall_id
         LEFT JOIN canteens c ON c.id = s.canteen_id
         WHERE p.id = ?
-    """, (post_id,)).fetchone()
+          AND (p.status = 'approved' OR p.visitor_id = ?)
+    """, (post_id, vid)).fetchone()
 
     if post is None:
         conn.close()
@@ -1413,8 +1468,9 @@ def board_detail(post_id):
                 flash("你今天已经发过相同内容的回复了，请勿重复提交。", "error")
             elif recent == 0:
                 conn.execute("""
-                    INSERT INTO post_replies (post_id, author, content, visitor_id)
-                    VALUES (?, ?, ?, ?)
+                    INSERT INTO post_replies
+                    (post_id, author, content, visitor_id, status)
+                    VALUES (?, ?, ?, ?, 'pending')
                 """, (post_id, author, content, vid))
                 conn.execute("""
                     UPDATE posts SET last_reply_at = datetime('now', '+8 hours')
@@ -1427,8 +1483,9 @@ def board_detail(post_id):
     replies = conn.execute("""
         SELECT * FROM post_replies
         WHERE post_id = ?
+          AND (status = 'approved' OR visitor_id = ?)
         ORDER BY id ASC
-    """, (post_id,)).fetchall()
+    """, (post_id, vid)).fetchall()
     conn.close()
 
     return render_template(
@@ -2563,6 +2620,132 @@ def admin_announcements_upload_image():
         "url": f"/static/announcement_images/{filename}",
     })
 
+@app.route("/admin/pending")
+def admin_pending():
+    if not is_admin():
+        return redirect(url_for("login"))
+
+    conn = get_db()
+
+    reviews = conn.execute("""
+        SELECT r.id, r.author, r.rating, r.content, r.photo,
+               r.created_at, r.status,
+               d.id AS dish_id, d.name AS dish_name,
+               s.name AS stall_name,
+               c.name AS canteen_name
+        FROM reviews r
+        JOIN dishes d   ON d.id = r.dish_id
+        JOIN stalls s   ON s.id = d.stall_id
+        JOIN canteens c ON c.id = s.canteen_id
+        WHERE r.status = 'pending'
+        ORDER BY r.id DESC
+    """).fetchall()
+
+    posts = conn.execute("""
+        SELECT p.id, p.author, p.content, p.when_time, p.contact,
+               p.created_at, p.status,
+               s.name AS stall_name,
+               c.name AS canteen_name
+        FROM posts p
+        LEFT JOIN stalls s   ON s.id = p.stall_id
+        LEFT JOIN canteens c ON c.id = s.canteen_id
+        WHERE p.status = 'pending'
+        ORDER BY p.id DESC
+    """).fetchall()
+
+    replies = conn.execute("""
+        SELECT r.id, r.author, r.content, r.created_at, r.status,
+               r.post_id,
+               p.content AS post_content
+        FROM post_replies r
+        JOIN posts p ON p.id = r.post_id
+        WHERE r.status = 'pending'
+        ORDER BY r.id DESC
+    """).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "admin_pending.html",
+        reviews=reviews,
+        posts=posts,
+        replies=replies,
+    )
+
+
+@app.route("/admin/pending/<kind>/<int:item_id>/<action>", methods=["POST"])
+def admin_pending_action(kind, item_id, action):
+    if not is_admin():
+        return redirect(url_for("login"))
+
+    if kind not in ("post", "review", "reply"):
+        return "类型不对", 400
+    if action not in ("approve", "reject"):
+        return "动作不对", 400
+
+    table = {"post": "posts", "review": "reviews", "reply": "post_replies"}[kind]
+    new_status = "approved" if action == "approve" else "rejected"
+
+    conn = get_db()
+
+    # ---- 先查出这条内容是谁发的、什么内容，用于通知 ----
+    owner_vid = None
+    snippet = ""
+    link = ""
+
+    if kind == "review":
+        row = conn.execute("""
+            SELECT r.visitor_id, r.content, r.dish_id, d.name AS dish_name
+            FROM reviews r
+            JOIN dishes d ON d.id = r.dish_id
+            WHERE r.id = ?
+        """, (item_id,)).fetchone()
+        if row:
+            owner_vid = row["visitor_id"]
+            snippet = (row["content"] or "")[:30]
+            link = f"/dish/{row['dish_id']}"
+    elif kind == "post":
+        row = conn.execute("""
+            SELECT visitor_id, content FROM posts WHERE id = ?
+        """, (item_id,)).fetchone()
+        if row:
+            owner_vid = row["visitor_id"]
+            snippet = (row["content"] or "")[:30]
+            link = f"/board/{item_id}"
+    elif kind == "reply":
+        row = conn.execute("""
+            SELECT visitor_id, content, post_id FROM post_replies WHERE id = ?
+        """, (item_id,)).fetchone()
+        if row:
+            owner_vid = row["visitor_id"]
+            snippet = (row["content"] or "")[:30]
+            link = f"/board/{row['post_id']}"
+
+    # ---- 更新状态 ----
+    conn.execute(
+        f"UPDATE {table} SET status = ? WHERE id = ?",
+        (new_status, item_id)
+    )
+
+    # ---- 发通知 ----
+    KIND_LABEL = {"post": "拼饭帖", "review": "评价", "reply": "回复"}
+    kind_cn = KIND_LABEL[kind]
+
+    if action == "approve":
+        title = f"✅ 你的{kind_cn}已通过审核"
+        content = f"内容：{snippet}…" if snippet else "已公开显示"
+    else:
+        title = f"❌ 你的{kind_cn}未通过审核"
+        content = f"内容：{snippet}…" if snippet else "已隐藏"
+
+    push_notification(conn, owner_vid, "audit_" + action, title, content, link)
+
+    conn.commit()
+    conn.close()
+
+    flash("✓ 已通过" if action == "approve" else "已拒绝", "success")
+    return redirect(url_for("admin_pending"))
+
 @app.route("/announcements/<int:aid>/read", methods=["POST"])
 def announcement_mark_read(aid):
     """弹窗读完时调这个接口，标记为已读"""
@@ -2582,6 +2765,33 @@ def announcement_mark_read(aid):
         pass
     conn.close()
     return jsonify({"ok": True})
+
+@app.route("/notifications")
+def notifications():
+    uid = session.get("user_id")
+    if not uid:
+        return redirect(url_for("signin"))
+
+    conn = get_db()
+
+    # 进页面就全部标已读
+    conn.execute(
+        "UPDATE notifications SET is_read = 1 "
+        "WHERE user_id = ? AND is_read = 0",
+        (uid,)
+    )
+    conn.commit()
+
+    items = conn.execute("""
+        SELECT * FROM notifications
+        WHERE user_id = ?
+        ORDER BY id DESC
+        LIMIT 100
+    """, (uid,)).fetchall()
+
+    conn.close()
+
+    return render_template("notifications.html", items=items)
 
 # ============================================================
 # 菜单照片
@@ -2915,7 +3125,7 @@ def admin_stats():
         FROM dishes d
         JOIN stalls s   ON s.id = d.stall_id
         JOIN canteens c ON c.id = s.canteen_id
-        LEFT JOIN reviews r ON r.dish_id = d.id
+        LEFT JOIN reviews r ON r.dish_id = d.id AND r.status = 'approved'
         GROUP BY d.id
         HAVING review_count > 0
     """

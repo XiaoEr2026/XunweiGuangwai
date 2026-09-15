@@ -111,6 +111,14 @@
         <p>禁止刷屏 IP 提交反馈。</p>
       </a>
 
+      <a class="admin-card" href="/admin/pending" style="border-left-color: #f59f00; position: relative;">
+        {% if pending_audit > 0 %}
+          <span class="admin-card-badge">{{ pending_audit }}</span>
+        {% endif %}
+        <h3>🔍 内容审核</h3>
+        <p>学生发的帖子 / 评价 / 回复，先审后公开。</p>
+      </a>
+
       <a class="admin-card" href="/admin/reviews" style="border-left-color: #7048e8;">
         <h3>💬 评论管理</h3>
         <p>查看所有评论，删除不合适的。</p>

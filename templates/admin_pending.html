@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>内容审核 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/admin">← 返回后台首页</a>
+
+    <h1 class="detail-title">🔍 内容审核</h1>
+    <p class="detail-meta">
+      学生发的内容先到这里。通过后才会公开显示。
+    </p>
+
+    {# ==================== 待审评价 ==================== #}
+    <h2 style="margin: 28px 0 12px; font-size: 18px;">
+      💬 待审评价（{{ reviews|length }}）
+    </h2>
+
+    {% if reviews %}
+      {% for r in reviews %}
+        <div class="review" style="margin-top: 12px; border-left: 4px solid #f59f00;">
+          <p>
+            <span class="review-author">{{ r.author }}</span>
+            <span class="review-rating">★ {{ r.rating }} / 5</span>
+            <span style="color: var(--text-tertiary); font-size: 12.5px; margin-left: 8px;">
+              {{ r.created_at }}
+            </span>
+          </p>
+          <p style="font-size: 13px; color: var(--text-secondary); margin: 4px 0;">
+            🍽️ {{ r.canteen_name }} · {{ r.stall_name }} · <strong>{{ r.dish_name }}</strong>
+          </p>
+          <p style="white-space: pre-wrap; margin-top: 8px;">{{ r.content }}</p>
+          {% if r.photo %}
+            <p>
+              <img src="/static/uploads/{{ r.photo }}" alt="实拍"
+                   style="max-width: 240px; border-radius: 8px;">
+            </p>
+          {% endif %}
+          <div style="display: flex; gap: 8px; margin-top: 10px;">
+            <form method="post" action="/admin/pending/review/{{ r.id }}/approve" style="display:inline;">
+              <button type="submit" class="btn-sm" style="background: #2b8a3e; padding: 6px 18px;">✓ 通过</button>
+            </form>
+            <form method="post" action="/admin/pending/review/{{ r.id }}/reject"
+                  data-confirm='拒绝这条评价？&#10;它会变成"被拒绝"状态，学生端不显示。' style="display:inline;">
+              <button type="submit" class="btn-sm btn-sm-danger" style="padding: 6px 18px;">✗ 拒绝</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p style="color: var(--text-secondary);">没有待审评价。</p>
+    {% endif %}
+
+    {# ==================== 待审帖子 ==================== #}
+    <h2 style="margin: 32px 0 12px; font-size: 18px;">
+      🍜 待审帖子（{{ posts|length }}）
+    </h2>
+
+    {% if posts %}
+      {% for p in posts %}
+        <div class="board-card" style="margin-top: 12px; border-left: 4px solid #f59f00;">
+          <div class="board-head">
+            <span class="board-author">{{ p.author }}</span>
+            {% if p.when_time %}<span class="board-when">🕐 {{ p.when_time }}</span>{% endif %}
+            {% if p.stall_name %}
+              <span class="board-stall">🍽️ {{ p.canteen_name }} · {{ p.stall_name }}</span>
+            {% endif %}
+          </div>
+          <p class="board-content">{{ p.content }}</p>
+          {% if p.contact %}
+            <p style="font-size: 13px; color: var(--text-secondary); margin: 4px 0;">
+              📱 {{ p.contact }}
+            </p>
+          {% endif %}
+          <p class="board-time">{{ p.created_at }}</p>
+          <div style="display: flex; gap: 8px; margin-top: 10px;">
+            <form method="post" action="/admin/pending/post/{{ p.id }}/approve" style="display:inline;">
+              <button type="submit" class="btn-sm" style="background: #2b8a3e; padding: 6px 18px;">✓ 通过</button>
+            </form>
+            <form method="post" action="/admin/pending/post/{{ p.id }}/reject"
+                  data-confirm='拒绝这条帖子？' style="display:inline;">
+              <button type="submit" class="btn-sm btn-sm-danger" style="padding: 6px 18px;">✗ 拒绝</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p style="color: var(--text-secondary);">没有待审帖子。</p>
+    {% endif %}
+
+    {# ==================== 待审回复 ==================== #}
+    <h2 style="margin: 32px 0 12px; font-size: 18px;">
+      💭 待审回复（{{ replies|length }}）
+    </h2>
+
+    {% if replies %}
+      {% for r in replies %}
+        <div class="review" style="margin-top: 12px; border-left: 4px solid #f59f00;">
+          <p>
+            <span class="review-author">{{ r.author }}</span>
+            <span style="color: var(--text-tertiary); font-size: 12.5px; margin-left: 8px;">
+              {{ r.created_at }}
+            </span>
+          </p>
+          <p style="font-size: 13px; color: var(--text-secondary); margin: 4px 0;">
+            回复帖子：{{ r.post_content|truncate(50, true, '…') }}
+          </p>
+          <p style="white-space: pre-wrap; margin-top: 8px;">{{ r.content }}</p>
+          <div style="display: flex; gap: 8px; margin-top: 10px;">
+            <form method="post" action="/admin/pending/reply/{{ r.id }}/approve" style="display:inline;">
+              <button type="submit" class="btn-sm" style="background: #2b8a3e; padding: 6px 18px;">✓ 通过</button>
+            </form>
+            <form method="post" action="/admin/pending/reply/{{ r.id }}/reject"
+                  data-confirm='拒绝这条回复？' style="display:inline;">
+              <button type="submit" class="btn-sm btn-sm-danger" style="padding: 6px 18px;">✗ 拒绝</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p style="color: var(--text-secondary);">没有待审回复。</p>
+    {% endif %}
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

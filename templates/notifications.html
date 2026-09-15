@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的通知 - 寻味广外</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .notif-item {
+      margin-top: 12px;
+    }
+    .notif-approved {
+      border-left: 4px solid #2b8a3e;
+    }
+    .notif-rejected {
+      border-left: 4px solid #e03131;
+    }
+    .notif-default {
+      border-left: 4px solid #7048e8;
+    }
+  </style>
+</head>
+<body>
+
+{% include '_nav.html' %}
+
+  <div class="container">
+
+    <a class="back-link" href="/">← 返回首页</a>
+
+    <h1 class="detail-title">📬 我的通知</h1>
+    <p class="detail-meta">共 {{ items|length }} 条</p>
+
+    {% if items %}
+      {% for n in items %}
+        <div class="review notif-item
+                    {% if n.type == 'audit_approved' %}notif-approved
+                    {% elif n.type == 'audit_rejected' %}notif-rejected
+                    {% else %}notif-default{% endif %}">
+          <p style="margin: 0; font-weight: 600; font-size: 15px;">
+            {{ n.title }}
+          </p>
+          {% if n.content %}
+            <p style="margin: 6px 0 0; color: var(--text-secondary); font-size: 14px;">
+              {{ n.content }}
+            </p>
+          {% endif %}
+          <p style="margin: 8px 0 0; display: flex; justify-content: space-between; align-items: center;">
+            <span class="review-time" style="margin: 0;">{{ n.created_at }}</span>
+            {% if n.link %}
+              <a href="{{ n.link }}" class="btn-sm btn-sm-info"
+                 style="text-decoration: none; padding: 4px 12px;">查看 →</a>
+            {% endif %}
+          </p>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-emoji">📬</span>
+        <p>还没有通知。</p>
+        <p style="color: var(--text-tertiary); font-size: 13.5px; margin-top: 8px;">
+          你发的帖子、评价被审核后，结果会出现在这里。
+        </p>
+      </div>
+    {% endif %}
+
+  </div>
+
+{% include '_footer.html' %}
+
+</body>
+</html>

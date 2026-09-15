@@ -47,6 +47,14 @@
             <span class="nav-badge">{{ unread_announcements }}</span>
           {% endif %}
         </a>
+
+        <a href="/admin/pending" class="nav-link">
+          审核
+          {% if pending_audit > 0 %}
+            <span class="nav-badge">{{ pending_audit }}</span>
+          {% endif %}
+        </a>
+
         <a href="/feedback/list" class="nav-link">
           反馈
           {% if pending_feedback > 0 %}
@@ -69,6 +77,12 @@
           我的反馈
           {% if unread_replies > 0 %}
             <span class="nav-badge">{{ unread_replies }}</span>
+          {% endif %}
+        </a>
+        <a href="/notifications" class="nav-link">
+          通知
+          {% if unread_notifications > 0 %}
+            <span class="nav-badge">{{ unread_notifications }}</span>
           {% endif %}
         </a>
         <a href="/about" class="nav-link">关于</a>
